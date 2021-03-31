@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--- 命名空间 namespace -->
+<mapper namespace="yzh.dao.Stations">
+    <!-- 结果集映射 -->
+    <resultMap id="myStation" type="model.站点信息">
+        <id column="ID" property="ID" />
+        <result column="Name" property="Name" />
+        <result column="Admin_Code" property="Admin_Code" />
+        <result column="Province" property="Province" />
+        <result column="City" property="City" />
+        <result column="Cnty" property="Cnty" />
+        <result column="Station_levl" property="Level" />
+        <result column="Lat" property="Lat" />
+        <result column="Lon" property="Lon" />
+        <result column="Height" property="Height" />
+    </resultMap>
+    <!-- 查询sql -->
+    <select id="获取站点信息" resultMap="myStation">
+        SELECT * FROM Stations
+    </select>
+
+    <insert id="插入站点">
+        insert into Stations (ID,Name)
+        value(#{ID},#{Name})
+    </insert>
+    <select id="count_Szyb_GD_ZD" resultType="int">
+        SELECT COUNT(*) mycount FROM Szyb_GD_ZD WHERE  MyDate = #{ID} AND ${DataType} IS NOT NULL AND ${DataType} >-99990
+    </select>
+    <insert id="insert_Szyb_GD_ZD"  parameterType="java.util.List">
+        insert into Szyb_GD_ZD
+        ( ID, MyDate, SX, PRE_3h, TEM, TMAX, TMIN, WIU10, WIV10, ERH)
+        values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.ID},
+            #{item.MyDate},
+            #{item.SX},
+            #{item.PRE_3h},
+            #{item.TEM},
+            #{item.TMAX},
+            #{item.TMIN},
+            #{item.WIU10},
+            #{item.WIV10},
+            #{item.ERH}
+            )
+        </foreach>
+        on duplicate key update
+        PRE_3h=values(PRE_3h),
+        TEM=values(TEM),
+        TMAX =values(TMAX),
+        TMIN =values(TMIN),
+        WIU10 =values(WIU10),
+        WIV10 =values(WIV10),
+        ERH =values(ERH)
+    </insert>
+
+</mapper>

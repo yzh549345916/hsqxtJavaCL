@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--- 命名空间 namespace -->
+<mapper namespace="yzh.dao.RMAPSDao">
+    <!-- 结果集映射 -->
+    <resultMap id="myStation" type="model.站点信息">
+        <id column="ID" property="ID" />
+        <result column="Name" property="Name" />
+        <result column="Admin_Code" property="Admin_Code" />
+        <result column="Province" property="Province" />
+        <result column="City" property="City" />
+        <result column="Cnty" property="Cnty" />
+        <result column="Station_levl" property="Level" />
+        <result column="Lat" property="Lat" />
+        <result column="Lon" property="Lon" />
+        <result column="Height" property="Height" />
+    </resultMap>
+    <!-- 查询sql -->
+    <select id="getAllStations" resultMap="myStation">
+        SELECT * FROM RmapsStations
+    </select>
+
+    <insert id="插入站点">
+        insert into RmapsStations (ID,Name)
+        value(#{ID},#{Name})
+    </insert>
+    <select id="count_Rmaps_GD_ZD" resultType="int">
+        SELECT COUNT(*) mycount FROM ${TableName} WHERE  MyDate = #{Time} AND ${DataType} IS NOT NULL AND ${DataType} >-99990
+    </select>
+    <insert id="insert_rmaps_GD_ZD"  parameterType="java.util.List">
+        insert into ${tableName}
+        ( ID, MyDate, SX, PRE, TEM, TEM_surface, RHU, PRS, WIU10, WIV10,VIS, Low_cloud, Medium_cloud, High_cloud, TEM_isobaric_500, TEM_isobaric_700, TEM_isobaric_850, RHU_isobaric_500, RHU_isobaric_700, RHU_isobaric_850, WIU10_isobaric_500, WIU10_isobaric_700, WIU10_isobaric_850, WIV10_isobaric_500, WIV10_isobaric_700, WIV10_isobaric_850, Geopotential_height_500, Geopotential_height_700, Geopotential_height_850)
+        values
+        <foreach collection="dataList" item="item" index="index" separator=",">
+            (
+            #{item.ID},
+            #{item.MyDate},
+            #{item.SX},
+            #{item.PRE},
+            #{item.TEM},
+            #{item.TEM_surface},
+            #{item.RHU},
+            #{item.PRS},
+            #{item.WIU10},
+            #{item.WIV10},
+            #{item.VIS},
+            #{item.Low_cloud},
+            #{item.Medium_cloud},
+            #{item.High_cloud},
+            #{item.TEM_isobaric_500},
+            #{item.TEM_isobaric_700},
+            #{item.TEM_isobaric_850},
+            #{item.RHU_isobaric_500},
+            #{item.RHU_isobaric_700},
+            #{item.RHU_isobaric_850},
+            #{item.WIU10_isobaric_500},
+            #{item.WIU10_isobaric_700},
+            #{item.WIU10_isobaric_850},
+            #{item.WIV10_isobaric_500},
+            #{item.WIV10_isobaric_700},
+            #{item.WIV10_isobaric_850},
+            #{item.Geopotential_height_500},
+            #{item.Geopotential_height_700},
+            #{item.Geopotential_height_850}
+            )
+        </foreach>
+        on duplicate key update
+        PRE=values(PRE),
+        TEM=values(TEM),
+        TEM_surface=values(TEM_surface),
+        RHU=values(RHU),
+        PRS=values(PRS),
+        WIU10=values(WIU10),
+        WIV10=values(WIV10),
+        VIS=values(VIS),
+        Low_cloud=values(Low_cloud),
+        Medium_cloud=values(Medium_cloud),
+        High_cloud=values(High_cloud),
+        TEM_isobaric_500=values(TEM_isobaric_500),
+        TEM_isobaric_700=values(TEM_isobaric_700),
+        TEM_isobaric_850=values(TEM_isobaric_850),
+        RHU_isobaric_500=values(RHU_isobaric_500),
+        RHU_isobaric_700=values(RHU_isobaric_700),
+        RHU_isobaric_850=values(RHU_isobaric_850),
+        WIU10_isobaric_500=values(WIU10_isobaric_500),
+        WIU10_isobaric_700=values(WIU10_isobaric_700),
+        WIU10_isobaric_850=values(WIU10_isobaric_850),
+        WIV10_isobaric_500=values(WIV10_isobaric_500),
+        WIV10_isobaric_700=values(WIV10_isobaric_700),
+        WIV10_isobaric_850=values(WIV10_isobaric_850),
+        Geopotential_height_500=values(Geopotential_height_500),
+        Geopotential_height_700=values(Geopotential_height_700),
+        Geopotential_height_850=values(Geopotential_height_850)
+    </insert>
+</mapper>
