@@ -10,6 +10,7 @@ import org.junit.Test;
 import yzh.dao.StationDao;
 import yzh.dao.StationDaoImpl;
 import yzh.util.SqlSessionFactoryUtil;
+import yzh.环境气象.沙尘模式下载;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ public class 主程序 {
         区台格点数值预报站点数据定时处理();
         RMAPS数值预报站点数据定时处理();
         RMAPS数值预报站点数据历史处理();
+        沙尘模式下载.日常下载();
         /*
         考虑到Quartz表达式的兼容性，且存在对于秒级别精度匹配的需求，Hutool可以通过设置使用秒匹配模式来兼容。
         //支持秒级别定时任务  CronUtil.setMatchSecond(true); 此时Hutool可以兼容Quartz表达式（5位表达式、6位表达式都兼容）
@@ -46,6 +48,13 @@ public class 主程序 {
             public void execute() {
                 区台格点数值预报站点数据历史处理();
                 RMAPS数值预报站点数据历史处理();
+            }
+        });
+        //CUACE08时每天15时左右，20时每天3点左右
+        CronUtil.schedule("5,10,20,30,40 15,16,3 * * *", new Task() {
+            @Override
+            public void execute() {
+                沙尘模式下载.日常下载();
             }
         });
         CronUtil.schedule("10,20,30,40,50 1,2,12,13 * * *", new Task() {
