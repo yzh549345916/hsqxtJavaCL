@@ -10,7 +10,7 @@ import java.io.InputStream;
 public class SqlSessionFactoryUtil {
 
     private static SqlSessionFactory sqlSessionFactory;
-
+    private static SqlSessionFactory sqlSessionFactoryHuanbao;
     /**
      * 每个基于 MyBatis 的应用都是以一个 SqlSessionFactory 的实例为中心的。
      * SqlSessionFactory 的实例可以通过 SqlSessionFactoryBuilder 获得。
@@ -32,5 +32,18 @@ public class SqlSessionFactoryUtil {
             e.printStackTrace();
         }
         return sqlSessionFactory;
+    }
+    public static SqlSessionFactory getSqlSessionFactoryHuanbao() {
+        if (sqlSessionFactoryHuanbao != null) {
+            return sqlSessionFactoryHuanbao;
+        }
+        InputStream inputStream;
+        try {
+            inputStream = Resources.getResourceAsStream("config/mybatis-config.xml");
+            sqlSessionFactoryHuanbao = new SqlSessionFactoryBuilder().build(inputStream,"developmenthuanjing");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return sqlSessionFactoryHuanbao;
     }
 }

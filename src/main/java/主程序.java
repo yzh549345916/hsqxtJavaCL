@@ -1,6 +1,8 @@
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.cron.CronUtil;
 import cn.hutool.cron.task.Task;
 import model.区台格点数值预报站点Model;
@@ -10,6 +12,7 @@ import org.junit.Test;
 import yzh.dao.StationDao;
 import yzh.dao.StationDaoImpl;
 import yzh.util.SqlSessionFactoryUtil;
+import yzh.数值预报处理.nc处理;
 import yzh.环境气象.沙尘模式下载;
 
 import java.util.List;
@@ -17,12 +20,15 @@ import java.util.List;
 
 public class 主程序 {
     public static void main(String[] args) {
+        cs();
         数值预报文件处理 szyb = new 数值预报文件处理();
         szyb.ftp处理();
         区台格点数值预报站点数据定时处理();
         RMAPS数值预报站点数据定时处理();
         RMAPS数值预报站点数据历史处理();
         沙尘模式下载.日常下载();
+        沙尘模式下载.压缩近7天的数据();
+        CUACE定时处理();
         /*
         考虑到Quartz表达式的兼容性，且存在对于秒级别精度匹配的需求，Hutool可以通过设置使用秒匹配模式来兼容。
         //支持秒级别定时任务  CronUtil.setMatchSecond(true); 此时Hutool可以兼容Quartz表达式（5位表达式、6位表达式都兼容）
@@ -49,14 +55,18 @@ public class 主程序 {
                 区台格点数值预报站点数据历史处理();
                 RMAPS数值预报站点数据历史处理();
                 沙尘模式下载.压缩近7天的数据();
-                沙尘模式下载. 删除7天钱的原始的数据();
+                CUACE格点数据历史处理();
+                沙尘模式下载. 删除7天前的原始的数据();
+                nc处理.删除30天前的格点的数据();
+
             }
         });
         //CUACE08时每天15时左右，20时每天3点左右
-        CronUtil.schedule("5,10,20,30,40 15,16,3 * * *", new Task() {
+        CronUtil.schedule("5,10,20,30,40 15,16,3,4 * * *", new Task() {
             @Override
             public void execute() {
                 沙尘模式下载.日常下载();
+                CUACE定时处理();
             }
         });
         CronUtil.schedule("10,20,30,40,50 1,2,12,13 * * *", new Task() {
@@ -105,23 +115,20 @@ public class 主程序 {
             grib2处理. rmaps格点数值预报站点数据Grib2文件处理(myDate);
         }
     }
-    @Test
-    public static void cs(){
-        DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20);
-        if(DateUtil.hour(DateUtil.date(),true)<12){
+    public static void CUACE定时处理(){
+        DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-24);
+        if(DateUtil.hour(DateUtil.date(),true)>15){
             myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 8);
         }
-        Grib2处理 grib2处理=new Grib2处理();
-        List<区台格点数值预报站点Model> lists= grib2处理.区台格点数值预报站点数据Grib2文件处理(myDate);
-        if(lists.size()>0){
-            SqlSessionFactory sqlSessionFactory = SqlSessionFactoryUtil.getSqlSessionFactory();
-            SqlSession session = sqlSessionFactory.openSession(true);
-            StationDao stationDao = session.getMapper(StationDao.class);
-            int n=stationDao.insert_Szyb_GD_ZD("Szyb_GD_ZD_"+DateUtil.format(myDate,"yyyyMMdd"), lists);
-            if(n>0){
-                System.out.println(DateUtil.date()+"   共计入库"+myDate+"的数据"+n+"条。");
-            }
+        if(!nc处理.cuace格点数据是否存在(myDate)){
+            nc处理.CUACE数据处理(myDate);
+            System.out.println(DateUtil.date()+"处理"+myDate+"的CUACE格点数据");
         }
+    }
+    @Test
+    public static void cs(){
+        DateTime myDate = new DateTime("2021-04-09 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
+        nc处理.京津冀测试(myDate);
     }
     public static void 区台格点数值预报站点数据历史处理(){
         try{
@@ -173,6 +180,21 @@ public class 主程序 {
        } catch (Exception e) {
            e.printStackTrace();
        }
+    }
+    public static void CUACE格点数据历史处理(){
+        try{
+            DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 8-24);
+            for(int i=-7*24;i<0;i=i+12)
+            {
+                DateTime myTime=DateUtil.offsetHour(myDate,i);
+                if(!nc处理.cuace格点数据是否存在(myTime)){
+                    nc处理.CUACE数据处理(myTime);
+                    System.out.println(DateUtil.date()+"处理"+myTime+"的CUACE格点数据");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
     public static void RMAPS数值预报站点数据总历史处理(){
         try{
