@@ -10,4 +10,6 @@ public interface huanbao {
     public Integer insert_TEM(@Param("dataList")List<高空要素Model> dataList);
     public Integer insert_ECheigh(@Param("dataList")List<高空要素Model> dataList,@Param("Type")String Type);
     public Integer CountEC(@Param("Type")String Type,@Param("mydatetime") Date mydatetime);
+    public List<EC高空Model> GetECHeightByDatetime(@Param("mydatetime") Date mydatetime);
+    public void deleteHistoryEC(@Param("mydatetime") Date mydatetime);
 }

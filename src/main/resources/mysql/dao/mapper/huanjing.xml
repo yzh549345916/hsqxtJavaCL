@@ -22,9 +22,15 @@
     <select id="GetStationsByType" resultType="yzh.数值预报处理.环境气象.站点信息">
         SELECT * FROM Stations WHERE Type = #{Type}
     </select>
+    <select id="GetECHeightByDatetime" resultType="yzh.数值预报处理.环境气象.EC高空Model">
+        SELECT * FROM ECHeigh WHERE Datetime = #{mydatetime}
+    </select>
     <select id="CountEC" resultType="int">
         SELECT COUNT(1)  FROM ECHeigh WHERE Datetime=#{mydatetime} AND ${Type} IS NOT NULL
     </select>
+    <delete id="deleteHistoryEC">
+        DELETE FROM ECHeigh WHERE Datetime &lt; #{mydatetime}
+    </delete>
     <insert id="insert_TEM"  parameterType="java.util.List">
         insert into ECHeigh
         ( stationID, Datetime, validTime, fcstLevel, TEM)

@@ -13,6 +13,7 @@ import yzh.dao.StationDao;
 import yzh.dao.StationDaoImpl;
 import yzh.util.SqlSessionFactoryUtil;
 import yzh.数值预报处理.nc处理;
+import yzh.数值预报处理.环境气象.EC高空处理为探空格式;
 import yzh.环境气象.沙尘模式下载;
 
 import java.util.List;
@@ -29,6 +30,7 @@ public class 主程序 {
         沙尘模式下载.日常下载();
         沙尘模式下载.压缩近7天的数据();
         CUACE定时处理();
+        EC高空定时处理();
         /*
         考虑到Quartz表达式的兼容性，且存在对于秒级别精度匹配的需求，Hutool可以通过设置使用秒匹配模式来兼容。
         //支持秒级别定时任务  CronUtil.setMatchSecond(true); 此时Hutool可以兼容Quartz表达式（5位表达式、6位表达式都兼容）
@@ -73,6 +75,12 @@ public class 主程序 {
             @Override
             public void execute() {
                 RMAPS数值预报站点数据定时处理();
+            }
+        });
+        CronUtil.schedule("5,10,30,40 2,3,14,15 * * *", new Task() {
+            @Override
+            public void execute() {
+                EC高空定时处理();
             }
         });
         CronUtil.setMatchSecond(true);
@@ -124,6 +132,14 @@ public class 主程序 {
             nc处理.CUACE数据处理(myDate);
             System.out.println(DateUtil.date()+"处理"+myDate+"的CUACE格点数据");
         }
+    }
+    public static void EC高空定时处理(){
+        DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-24);
+        if(DateUtil.hour(DateUtil.date(),true)>12){
+            myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 8);
+        }
+        EC高空处理为探空格式.处理EC高空(myDate);
+        System.out.println(DateUtil.date()+"处理"+myDate+"的EC高空数据");
     }
     @Test
     public static void cs(){
