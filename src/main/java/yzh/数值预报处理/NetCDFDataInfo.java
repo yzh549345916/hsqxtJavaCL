@@ -4,6 +4,7 @@ package yzh.数值预报处理;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.NumberUtil;
 import ucar.ma2.Array;
+import ucar.ma2.DataType;
 import ucar.nc2.Dimension;
 import ucar.nc2.NetcdfFile;
 import ucar.nc2.NetcdfFiles;
@@ -165,7 +166,20 @@ public class NetCDFDataInfo {
                             yDim = dim;
                             break;
                         case Z:
-                            dim.setValues((float[]) values.copyToNDJavaArray());
+                           try{
+                               DataType dataType=var.getDataType();
+                               if(dataType.isNumeric()){
+                                   if(dataType.isIntegral()){
+                                       dim.setValues( int转double((int[]) values.copyToNDJavaArray()));
+                                   }else {
+                                       dim.setValues((float[]) values.copyToNDJavaArray());
+                                   }
+                               }
+
+                           } catch (Exception e) {
+
+
+                           }
                             dim.setUnits(var.findAttributeString("units", ""));
                             zDim = dim;
                             break;
@@ -216,7 +230,43 @@ public class NetCDFDataInfo {
             }
         }
     }
+    private double[] getPackData(ucar.nc2.Variable var) {
+        double add_offset, scale_factor, missingValue = -9999.0;
+        add_offset = 0;
+        scale_factor = 1;
+        for (int i = 0; i < var.getAttributes().size(); i++) {
+            ucar.nc2.Attribute att = var.getAttributes().get(i);
+            String attName = att.getShortName();
+            if (attName.equals("add_offset")) {
+                add_offset = Double.parseDouble(att.getValue(0).toString());
+            }
 
+            if (attName.equals("scale_factor")) {
+                scale_factor = Double.parseDouble(att.getValue(0).toString());
+            }
+
+            if (attName.equals("missing_value")) {
+                missingValue = Double.parseDouble(att.getValue(0).toString());
+            }
+
+            //MODIS NetCDF data
+            if (attName.equals("_FillValue")) {
+                try {
+                    missingValue = Double.parseDouble(att.getValue(0).toString());
+                } catch (NumberFormatException e) {
+
+                }
+            }
+        }
+
+//        //Adjust undefine data
+//        if (Double.isNaN(missingValue)) {
+//            missingValue = this.getMissingValue();
+//        } else {
+//            missingValue = missingValue * scale_factor + add_offset;
+//        }
+        return new double[]{add_offset, scale_factor, missingValue};
+    }
     private double[] 数据批量四舍五入(double[] numbers) {
         double[] data = new double[numbers.length];
         for (int i = 0; i < numbers.length; i++) {
@@ -224,7 +274,13 @@ public class NetCDFDataInfo {
         }
         return data;
     }
-
+    private double[] int转double(int[] szIn){
+        double[] szout=new double[szIn.length];
+        for(int i=0;i<szIn.length;i++){
+            szout[i]=Double.valueOf(szIn[i]);
+        }
+        return szout;
+    }
     private double[] 数据批量转换(long[] numbers) {
         double[] data = new double[numbers.length];
         for (int i = 0; i < numbers.length; i++) {

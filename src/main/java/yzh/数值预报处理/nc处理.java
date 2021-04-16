@@ -202,6 +202,184 @@ public class nc处理 {
 
 
     }
+    public static void 人影数据(){
+        String path="D:\\新建文件夹\\1";
+        File[] files;
+        files = FileUtil.ls(path);
+        for (var myFile:files
+             ) {
+            if(myFile.isFile()&&myFile.getName().endsWith(".nc")){
+                人影数据处理(myFile.getPath());
+            }
+
+        }
+    }
+    public static void 人影数据处理(String Path) {
+        String resourPath = Path;
+        String[] clDatasz=new String[]{"cc","ciwc","clwc"};
+        String myDirNameSaveBase = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/格点数据/renying/";
+        try {
+            NetCDFDataInfo netCDFDataInfo = new NetCDFDataInfo(resourPath);
+            netCDFDataInfo.readDataInfo();
+            if (netCDFDataInfo.xDim != null && netCDFDataInfo.yDim != null && netCDFDataInfo.tDim != null) {
+                List<Date> myDates = 时间戳转时间(netCDFDataInfo.tDim.getDimValue());
+                int xCountS = -1, xCountE = -1, yCountS = -1, yCountE = -1;
+                xCountS = (int) Math.round((92 - netCDFDataInfo.xDim.getDimValue(0)) / netCDFDataInfo.xDim.getStep());
+                xCountE = (int) Math.round((117 - netCDFDataInfo.xDim.getDimValue(0)) / netCDFDataInfo.xDim.getStep());
+                yCountS = (int) Math.round((43 - netCDFDataInfo.yDim.getDimValue(0)) / netCDFDataInfo.yDim.getStep());
+                yCountE = (int) Math.round((31 - netCDFDataInfo.yDim.getDimValue(0)) / netCDFDataInfo.yDim.getStep());
+                for (Variable var1 : netCDFDataInfo.ncVariables
+                ) {
+                    if (var1.getRank() == 3) {
+                        JSONObject json1;
+                        String myName = var1.getFullName();
+
+
+                    } else if (var1.getRank() == 4) {
+                        JSONObject json1;
+                        boolean bsval=false;
+                        for (String sitem:clDatasz
+                             ) {
+                            if(sitem.equals(var1.getShortName())){
+                                bsval=true;
+                            }
+                        }
+                        if(bsval){
+                            String myName = var1.getFullName();
+                            List<Dimension> dims = var1.getDimensions();
+                            double[] levels = netCDFDataInfo.zDim.getValues();
+                            for (int j = 0; j < levels.length; j++) {
+
+
+                                for (int i = 0; i < myDates.size(); i++) {
+                                    try {
+                                        SimpleDateFormat df = new SimpleDateFormat("yyyy");
+                                        String format1 = df.format(myDates.get(i));
+                                        SimpleDateFormat df2 = new SimpleDateFormat("yyyy-MM");
+                                        String format2 = df2.format(myDates.get(i));
+                                        String myFileName1 = myDirNameSaveBase + myName + "/" +myName+"_"+String.format("%04d", Math.round(levels[j]))+"/"+ format1 + "/";
+                                        if (!FileUtil.exist(myFileName1)) {
+                                            FileUtil.mkdir(myFileName1);
+                                        }
+                                        String myFileName= myFileName1+ myName+"_"+String.format("%04d", Math.round(levels[j]))+ "_" + format2 + "_"  + ".txt";
+                                        if (!FileUtil.exist(myFileName)){
+                                            List ranges = new ArrayList();
+                                            for (var dimLs : dims
+                                            ) {
+                                                switch (dimLs.getName()) {
+                                                    case "latitude":
+                                                        ranges.add(new ucar.ma2.Range(yCountS, yCountE));
+                                                        break;
+                                                    case "longitude":
+                                                        ranges.add(new ucar.ma2.Range(xCountS, xCountE));
+                                                        break;
+                                                    case "time":
+                                                        ranges.add(new ucar.ma2.Range(i, i));
+                                                        break;
+                                                    case "level":
+                                                        ranges.add(new ucar.ma2.Range(j, j));
+                                                        break;
+                                                    default:
+                                                        break;
+                                                }
+                                            }
+                                           // double add_offset, scale_factor, missingValue;
+                                            double[] packData = getPackData(var1);
+                                            //add_offset = packData[0];
+                                           // scale_factor = packData[1];
+                                            //missingValue = packData[2];
+                                            double[] data=数据调整((short[])var1.read(ranges).reduce(0).copyTo1DJavaArray(),packData[0],packData[1],packData[2]);
+                                            json1 = JSONUtil.createObj()
+                                                    .putOnce("datetime", DateUtil.format(myDates.get(i), "yyyy/MM/dd HH:mm:ss"))
+                                                    .set("level", levels[j])
+                                                    .set("paramType", myName)
+                                                    .set("projection", "LongLat")
+                                                    .set("startLat", "43")
+                                                    .set("startLon", "92.00")
+                                                    .set("endLat", "31")
+                                                    .set("endLon", "117.00")
+                                                    .set("latCount", yCountE - yCountS + 1)
+                                                    .set("lonCount", xCountE - xCountS + 1)
+                                                    .set("latStep", netCDFDataInfo.yDim.getStep())
+                                                    .set("lonStep", netCDFDataInfo.xDim.getStep())
+                                                    .set("units", var1.findAttributeString("units", ""))
+                                                    .set("data", data);
+
+                                            File myFile = FileUtil.touch(myFileName);
+                                            FileUtil.appendUtf8String(JSONUtil.toJsonStr(json1), myFile);
+                                            json1.size();
+                                        }
+
+
+                                    } catch (ucar.ma2.InvalidRangeException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+
+                            }
+
+                            var1.getSize();
+                        }
+                    }
+                }
+            }
+            netCDFDataInfo.close();
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+
+    }
+    private static double[] 数据调整(short[] szin,Double add_offset,Double scale_factor,Double missingValue){
+        double[] szout=new double[szin.length];
+        for(int i=0;i<szin.length;i++){
+            if((double)szin[i]==missingValue){
+                szout[i]=szin[i];
+            }else{
+                szout[i] = szin[i] * scale_factor + add_offset;
+            }
+        }
+        return szout;
+    }
+    private static double[] getPackData(ucar.nc2.Variable var) {
+        double add_offset, scale_factor, missingValue = -9999.0;
+        add_offset = 0;
+        scale_factor = 1;
+        for (int i = 0; i < var.getAttributes().size(); i++) {
+            ucar.nc2.Attribute att = var.getAttributes().get(i);
+            String attName = att.getShortName();
+            if (attName.equals("add_offset")) {
+                add_offset = Double.parseDouble(att.getValue(0).toString());
+            }
+
+            if (attName.equals("scale_factor")) {
+                scale_factor = Double.parseDouble(att.getValue(0).toString());
+            }
+
+            if (attName.equals("missing_value")) {
+                missingValue = Double.parseDouble(att.getValue(0).toString());
+            }
+
+            //MODIS NetCDF data
+            if (attName.equals("_FillValue")) {
+                try {
+                    missingValue = Double.parseDouble(att.getValue(0).toString());
+                } catch (NumberFormatException e) {
+
+                }
+            }
+        }
+
+//        //Adjust undefine data
+//        if (Double.isNaN(missingValue)) {
+//            missingValue = this.getMissingValue();
+//        } else {
+//            missingValue = missingValue * scale_factor + add_offset;
+//        }
+        return new double[]{add_offset, scale_factor, missingValue};
+    }
     public static void 删除30天前的格点的数据(){
         try{
             Date myDate=DateUtil.offsetDay(new Date(),-30);
@@ -279,7 +457,8 @@ public class nc处理 {
 
     @Test
     public void cs() {
-
+        人影数据();
+        //人影数据处理("D:\\新建文件夹\\1\\1981-01-12.nc");
         //删除30天前的格点的数据();
         //cuace格点数据是否存在(myDate);
         //readNCfile(myDate);
