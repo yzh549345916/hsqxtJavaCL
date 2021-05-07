@@ -1,8 +1,7 @@
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
-import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.resource.ClassPathResource;
+
 import cn.hutool.cron.CronUtil;
 import cn.hutool.cron.task.Task;
 import model.区台格点数值预报站点Model;
@@ -21,16 +20,20 @@ import java.util.List;
 
 public class 主程序 {
     public static void main(String[] args) {
-        cs();
+
         数值预报文件处理 szyb = new 数值预报文件处理();
         szyb.ftp处理();
-        区台格点数值预报站点数据定时处理();
+        Grib2处理.历史数据删除();
         RMAPS数值预报站点数据定时处理();
+        区台格点数值预报站点数据定时处理();
+
         RMAPS数值预报站点数据历史处理();
         沙尘模式下载.日常下载();
         沙尘模式下载.压缩近7天的数据();
         CUACE定时处理();
         EC高空定时处理();
+        京津冀定时处理();
+
         /*
         考虑到Quartz表达式的兼容性，且存在对于秒级别精度匹配的需求，Hutool可以通过设置使用秒匹配模式来兼容。
         //支持秒级别定时任务  CronUtil.setMatchSecond(true); 此时Hutool可以兼容Quartz表达式（5位表达式、6位表达式都兼容）
@@ -43,6 +46,12 @@ public class 主程序 {
             @Override
             public void execute() {
                 szyb.ftp处理();
+            }
+        });
+        CronUtil.schedule("*/20 * * * *", new Task() {
+            @Override
+            public void execute() {
+                京津冀定时处理();
             }
         });
         CronUtil.schedule("40,45,50,59 4,5,13,14 * * *", new Task() {
@@ -60,7 +69,7 @@ public class 主程序 {
                 CUACE格点数据历史处理();
                 沙尘模式下载. 删除7天前的原始的数据();
                 nc处理.删除30天前的格点的数据();
-
+                京津冀历史处理();
             }
         });
         //CUACE08时每天15时左右，20时每天3点左右
@@ -110,7 +119,15 @@ public class 主程序 {
         if(DateUtil.hour(DateUtil.date(),true)<=12){
             myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-24);
         }
+        try{
+            if(!Grib2处理.rmapsJson风流场数据是否存在(myDate)){
+                Grib2处理.rmapsJson格点提取(myDate);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         Grib2处理 grib2处理=new Grib2处理();
+
         try{
             if(!grib2处理. rmaps格点数据是否存在(myDate)){
                 grib2处理.rmaps格点提取(myDate);
@@ -133,6 +150,28 @@ public class 主程序 {
             System.out.println(DateUtil.date()+"处理"+myDate+"的CUACE格点数据");
         }
     }
+    public static void 京津冀定时处理(){
+        try {
+            DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20);
+            nc处理.京津冀(myDate);
+            myDate= DateUtil.offsetDay(myDate,-1);
+            nc处理.京津冀(myDate);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    public static void 京津冀历史处理(){
+        try{
+            DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-24);
+            for(int i=-7*24;i<0;i=i+24)
+            {
+                DateTime myTime=DateUtil.offsetHour(myDate,i);
+                nc处理.京津冀(myTime);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     public static void EC高空定时处理(){
         DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-24);
         if(DateUtil.hour(DateUtil.date(),true)>12){
@@ -143,8 +182,11 @@ public class 主程序 {
     }
     @Test
     public static void cs(){
-        DateTime myDate = new DateTime("2021-04-09 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
-        nc处理.京津冀测试(myDate);
+       try{
+
+       } catch (Exception e) {
+           e.printStackTrace();
+       }
     }
     public static void 区台格点数值预报站点数据历史处理(){
         try{
@@ -175,12 +217,16 @@ public class 主程序 {
        try{
            DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 8-24);
            Grib2处理 grib2处理=new Grib2处理();
-           SqlSessionFactory sqlSessionFactory = SqlSessionFactoryUtil.getSqlSessionFactory();
-           SqlSession session = sqlSessionFactory.openSession(true);
-
            for(int i=-240;i<0;i=i+12)
            {
                DateTime myTime=DateUtil.offsetHour(myDate,i);
+               try{
+                   if(!Grib2处理.rmapsJson风流场数据是否存在(myTime)){
+                       Grib2处理.rmapsJson格点提取(myTime);
+                   }
+               } catch (Exception e) {
+                   e.printStackTrace();
+               }
                if(!grib2处理.判断RMAPS数据是否存在("TEM", myTime)){
                    grib2处理. rmaps格点数值预报站点数据Grib2文件处理(myTime);
                }
@@ -197,6 +243,7 @@ public class 主程序 {
            e.printStackTrace();
        }
     }
+
     public static void CUACE格点数据历史处理(){
         try{
             DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 8-24);

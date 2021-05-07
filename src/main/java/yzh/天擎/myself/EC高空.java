@@ -33,7 +33,7 @@ public class EC高空 {
         /* 2.3  接口参数，多个参数间无顺序 */
         HashMap<String, String> params = new HashMap<String, String>();
         //必选参数
-        params.put("dataCode", "NAFP_FOR_FTM_HIGH_EC_ANEA");
+        params.put("dataCode", "NAFP_ECMF_C1D_ANEA_ANA");
         params.put("time", DateUtil.format(DateUtil.offsetHour(edate, -8),"yyyyMMddHHmmss"));
         params.put("fcstEle", fcstEle);
         params.put("levelType", levelType);
@@ -82,7 +82,7 @@ public class EC高空 {
         /* 2.3  接口参数，多个参数间无顺序 */
         HashMap<String, String> params = new HashMap<String, String>();
         //必选参数
-        params.put("dataCode", "NAFP_FOR_FTM_HIGH_EC_ANEA");
+        params.put("dataCode", "NAFP_ECMF_C1D_ANEA_ANA");
         params.put("time", DateUtil.format(DateUtil.offsetHour(edate, -8),"yyyyMMddHHmmss"));
         params.put("fcstEle", fcstEle);
         params.put("levelType", levelType);

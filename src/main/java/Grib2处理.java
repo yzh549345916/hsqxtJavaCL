@@ -1,8 +1,6 @@
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.stream.Collectors;
-
 
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateTime;
@@ -14,6 +12,7 @@ import cn.hutool.core.io.resource.ClassPathResource;
 
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import model.*;
@@ -49,10 +48,12 @@ import static cn.hutool.core.util.NumberUtil.round;
 public class Grib2处理 {
     @Test
     public void main() {
-        DateTime myDate=new DateTime("2021-03-21 08:00:00", DatePattern.NORM_DATETIME_FORMAT);
-       // rmaps格点提取(myDate);
-       boolean b1 =rmaps格点数据是否存在(myDate);
-       var b2=b1;
+        DateTime myDate = new DateTime("2021-05-05 08:00:00", DatePattern.NORM_DATETIME_FORMAT);
+        // rmaps格点提取(myDate);
+        //rmapsJson风流场数据是否存在(myDate);
+        rmapsJson格点提取(myDate);
+        //boolean b1 = rmaps格点数据是否存在(myDate);
+        //var b2 = b1;
     }
 
     public List<区台数值预报数据Model> 根据文件路径_站点列表处理数据(String path, List<站点信息> stations) {
@@ -229,8 +230,263 @@ public class Grib2处理 {
         }
         return dataLists;
     }
-    public int rmaps根据文件路径提取格点数据(String path,DateTime myDate) {
-        int count=0;
+
+    public static void rmaps风流场处理(String path,DateTime myDate) {
+        RandomAccessFile raf = null;
+        try {
+            double dlo=0.05,dla=0.05,lo1=92,lo2=121,la1=53,la2=32;
+            int loCount=(int)Math.round((lo2-lo1)/dlo);
+            int laCount=(int)Math.round(-1*(la2-la1)/dlo);
+            lo2=NumberUtil.round(loCount*dlo+lo1,3).doubleValue();
+            la2=NumberUtil.round(laCount*dla*-1+la1,3).doubleValue();
+            SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
+            SimpleDateFormat df2 = new SimpleDateFormat("yyyyMMddHH");
+            String datePath1 = df.format(myDate);
+            String timePath1 = df2.format(myDate);
+            String myDirNameSaveBase = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/json/rmaps数据/风流场/";
+            int myforecastTime=-1;
+            raf = new RandomAccessFile(path, "r");
+            Grib2RecordScanner scan = new Grib2RecordScanner(raf);
+            JSONArray array = new JSONArray();
+            while (scan.hasNext()) {
+                Grib2Record gr2 = scan.next();
+                // section 0 指示段 包含GRIB、学科、GRIB 码版本号、资料长度
+                Grib2SectionIndicator iss = gr2.getIs();
+                // section 1 标识段 包含段长、段号,应用于GRIB 资料中全部加工数据的特征---时间
+                Grib2SectionIdentification ids = gr2.getId();
+                // section 3 网格定义段 包含段长、段号、网格面和面内数据的几何形状定义
+                Grib2SectionGridDefinition gds = gr2.getGDSsection();
+                Grib2Gds tempGds = gds.getGDS();
+                // section 4 产品定义段 包括段长、段号、数据的性质描述
+                Grib2SectionProductDefinition pds = gr2.getPDSsection();
+                Grib2Pds tempPds = pds.getPDS();
+                int forecastTime = tempPds.getForecastTime();//预报时效
+                myforecastTime=forecastTime;
+                int d = iss.getDiscipline();
+                int c = tempPds.getParameterCategory();
+                int n = tempPds.getParameterNumber();
+                int paramType = -1;// 0温度，1相对湿度，2降水,3风向,4风速U分量，5风速V分量，6气压,
+                paramType = Grib2数据类型转换(d, c, n);
+                if (paramType >= 0) {
+                    try {
+                        if ("LambertConformal".equalsIgnoreCase(tempGds.getNameShort())) {
+                            //lambertConformal  投影坐标范围
+                            String stringType = Rmaps数据类型识别(paramType, tempPds.getLevelType1(), tempPds.getLevelValue1());
+                            if (!stringType.isBlank() && (stringType.compareTo("WIU10") == 0 || stringType.compareTo("WIV10") == 0)) {
+                                Grib2Gds.LambertConformal lc = (Grib2Gds.LambertConformal) tempGds;
+                                GdsHorizCoordSys gg = lc.makeHorizCoordSys();
+                                Grib2SectionDataRepresentation drs = gr2.getDataRepresentationSection();
+                                float[] data = gr2.readData(raf, drs.getStartingPosition());
+                                CalendarDate referenceDate = ids.getReferenceDate();
+                                Date mydate = referenceDate.toDate();
+                                if (tempPds.isTimeInterval()) {
+                                    Date date1 = ((Grib2Pds.PdsInterval) tempPds).getIntervalTimeEnd().toDate();
+                                    forecastTime = +(int) DateUtil.between(date1, mydate, DateUnit.HOUR);
+                                }
+
+                                int count = 0;
+
+                                Double[] datasz = new Double[(loCount+1) * (laCount+1)];
+                                for (int i = 0; i <= loCount; i++) {
+                                    for (int j = 0; j <= laCount; j++) {
+                                        var proLS = gg.proj.latLonToProj(la1 - j * dla, lo1 + i * dlo);
+                                        int[] rowsz = 根据经纬度获取数据行数(gg.startx, gg.dx, gg.starty, gg.dy, proLS.getX(), proLS.getY());
+                                        if (rowsz.length == 2 && rowsz[0] >= 0 && rowsz[1] >= 0 && rowsz[0] <= gg.nx && rowsz[1] < gg.ny) {
+                                            datasz[count++] = round(data[(rowsz[1] * gg.nx + rowsz[0])], 2).doubleValue();
+                                            //dataLists.add(new 区台数值预报数据Model(stations.get(i).getID(), stations.get(i).getName(), DateUtil.offsetHour(mydate, forecastTime), DateUtil.date(mydate), forecastTime, stringType, value));
+                                        }
+                                    }
+                                }
+
+                                JSONObject json1 = JSONUtil.createObj()
+                                        .putOnce("parameterCategory", c)
+                                        .putOnce("parameterNumber", n)
+                                        .putOnce("lo1", lo1)
+                                        .putOnce("lo2", lo2)
+                                        .putOnce("la1", la1)
+                                        .putOnce("la2", la2)
+                                        .putOnce("dx", dlo)
+                                        .putOnce("dy", dla)
+                                        .putOnce("nx", loCount)
+                                        .putOnce("ny", laCount)
+                                        .putOnce("forecastTime", DateUtil.formatDateTime(DateUtil.offsetHour(mydate, forecastTime)))
+                                        .putOnce("datetime", DateUtil.formatDateTime(mydate))
+                                        .putOnce("parameterNumberName", stringType);
+                                JSONObject json2 = JSONUtil.createObj()
+                                        .putOnce("data", datasz)
+                                        .putOnce("header", json1);
+
+                                array.add(json2);
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            String myDirNameSave = myDirNameSaveBase  + datePath1 + "\\";
+            String myFileName = myDirNameSave + "RMAPS_wind_"+dlo+"_"+ timePath1 + "_" + String.format("%04d", myforecastTime) + ".json";
+            if (!FileUtil.exist(myFileName)) {
+                File myFile = FileUtil.touch(myFileName);
+                FileUtil.writeUtf8String(array.toString(), myFile);
+                System.out.println(DateUtil.date() + "处理" + DateUtil.format(myDate, "MM月dd日HH时") + "起报" + myforecastTime+ "时Rmaps风流场数据。");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (raf != null) {
+                try {
+                    raf.close();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
+            }
+        }
+
+    }
+    public static void rmaps风流场处理1公里(String path,DateTime myDate) {
+        RandomAccessFile raf = null;
+        try {
+            SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
+            SimpleDateFormat df2 = new SimpleDateFormat("yyyyMMddHH");
+            String datePath1 = df.format(myDate);
+            String timePath1 = df2.format(myDate);
+            String myDirNameSaveBase = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/json/rmaps数据/风流场/";
+            int myforecastTime=-1;
+            raf = new RandomAccessFile(path, "r");
+            Grib2RecordScanner scan = new Grib2RecordScanner(raf);
+            JSONArray array = new JSONArray();
+            while (scan.hasNext()) {
+                Grib2Record gr2 = scan.next();
+                // section 0 指示段 包含GRIB、学科、GRIB 码版本号、资料长度
+                Grib2SectionIndicator iss = gr2.getIs();
+                // section 1 标识段 包含段长、段号,应用于GRIB 资料中全部加工数据的特征---时间
+                Grib2SectionIdentification ids = gr2.getId();
+                // section 3 网格定义段 包含段长、段号、网格面和面内数据的几何形状定义
+                Grib2SectionGridDefinition gds = gr2.getGDSsection();
+                Grib2Gds tempGds = gds.getGDS();
+                // section 4 产品定义段 包括段长、段号、数据的性质描述
+                Grib2SectionProductDefinition pds = gr2.getPDSsection();
+                Grib2Pds tempPds = pds.getPDS();
+                int forecastTime = tempPds.getForecastTime();//预报时效
+                myforecastTime=forecastTime;
+                int d = iss.getDiscipline();
+                int c = tempPds.getParameterCategory();
+                int n = tempPds.getParameterNumber();
+                int paramType = -1;// 0温度，1相对湿度，2降水,3风向,4风速U分量，5风速V分量，6气压,
+                paramType = Grib2数据类型转换(d, c, n);
+                if (paramType >= 0) {
+                    try {
+                        if ("LambertConformal".equalsIgnoreCase(tempGds.getNameShort())) {
+                            //lambertConformal  投影坐标范围
+                            String stringType = Rmaps数据类型识别(paramType, tempPds.getLevelType1(), tempPds.getLevelValue1());
+                            if (!stringType.isBlank() && (stringType.compareTo("WIU10") == 0 || stringType.compareTo("WIV10") == 0)) {
+                                Grib2Gds.LambertConformal lc = (Grib2Gds.LambertConformal) tempGds;
+                                GdsHorizCoordSys gg = lc.makeHorizCoordSys();
+                                Grib2SectionDataRepresentation drs = gr2.getDataRepresentationSection();
+                                float[] data = gr2.readData(raf, drs.getStartingPosition());
+                                CalendarDate referenceDate = ids.getReferenceDate();
+                                Date mydate = referenceDate.toDate();
+                                if (tempPds.isTimeInterval()) {
+                                    Date date1 = ((Grib2Pds.PdsInterval) tempPds).getIntervalTimeEnd().toDate();
+                                    forecastTime = +(int) DateUtil.between(date1, mydate, DateUnit.HOUR);
+                                }
+                                Double[] datasz = new Double[291 * 211];
+                                int count = 0;
+                                for (int i = 0; i < 291; i++) {
+                                    for (int j = 0; j < 211; j++) {
+                                        var proLS = gg.proj.latLonToProj(53 - j * 0.1, 92 + i * 0.1);
+                                        int[] rowsz = 根据经纬度获取数据行数(gg.startx, gg.dx, gg.starty, gg.dy, proLS.getX(), proLS.getY());
+                                        if (rowsz.length == 2 && rowsz[0] >= 0 && rowsz[1] >= 0 && rowsz[0] <= gg.nx && rowsz[1] < gg.ny) {
+                                            datasz[count++] = round(data[(rowsz[1] * gg.nx + rowsz[0])], 2).doubleValue();
+                                            //dataLists.add(new 区台数值预报数据Model(stations.get(i).getID(), stations.get(i).getName(), DateUtil.offsetHour(mydate, forecastTime), DateUtil.date(mydate), forecastTime, stringType, value));
+                                        }
+                                    }
+                                }
+
+                                JSONObject json1 = JSONUtil.createObj()
+                                        .putOnce("parameterCategory", c)
+                                        .putOnce("parameterNumber", n)
+                                        .putOnce("lo1", 92)
+                                        .putOnce("lo2", 92+290*0.1)
+                                        .putOnce("la1", 53)
+                                        .putOnce("la2", 53-210*0.1)
+                                        .putOnce("dx", 0.1)
+                                        .putOnce("dy", 0.1)
+                                        .putOnce("nx", 291)
+                                        .putOnce("ny", 211)
+                                        .putOnce("forecastTime", DateUtil.formatDateTime(DateUtil.offsetHour(mydate, forecastTime)))
+                                        .putOnce("datetime", DateUtil.formatDateTime(mydate))
+                                        .putOnce("parameterNumberName", stringType);
+                                JSONObject json2 = JSONUtil.createObj()
+                                        .putOnce("data", datasz)
+                                        .putOnce("header", json1);
+
+                                array.add(json2);
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            String myDirNameSave = myDirNameSaveBase  + datePath1 + "\\";
+            String myFileName = myDirNameSave + "RMAPS_wind_0.1_"  + timePath1 + "_" + String.format("%04d", myforecastTime) + ".json";
+            if (!FileUtil.exist(myFileName)) {
+                File myFile = FileUtil.touch(myFileName);
+                FileUtil.writeUtf8String(array.toString(), myFile);
+                System.out.println(DateUtil.date() + "处理" + DateUtil.format(myDate, "MM月dd日HH时") + "起报" + myforecastTime+ "时Rmaps风流场数据。");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (raf != null) {
+                try {
+                    raf.close();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
+            }
+        }
+
+    }
+    public static void 历史数据删除(){
+        DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 8-24);
+        for(int i=-24*30;i<-24*15;i=i+24){
+            DateTime myTime=DateUtil.offsetHour(myDate,i);
+            SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
+            String format1 = df.format(myTime);
+            String myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/rmaps数据/" + format1;
+            if(FileUtil.exist(myDirName)){
+                FileUtil.del(myDirName);
+            }
+            SimpleDateFormat df2 = new SimpleDateFormat("yyyy-MM-dd");
+            String format2 = df2.format(myTime);
+            String[] dirSz=new String[]{"/区台数值预报文件/szyb/格点数据/","/区台数值预报文件/szyb/站点数据/","/区台数值预报文件/szyb/json/"};
+            for (String dirStr:dirSz
+                 ) {
+                myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + dirStr;
+                List<File> files=FileUtil.loopFiles(myDirName, pathname -> pathname.getName().contains(format1)||pathname.getName().contains(format2));
+                if(files.size()>0){
+                    List<File> delDirs=new ArrayList<>();
+                    for (File myFile:files
+                    ) {
+                        if(!delDirs.contains(myFile.getParentFile())){
+                            delDirs.add(myFile.getParentFile());
+                        }
+                    }
+                    for (File myDir:delDirs
+                    ) {
+                        FileUtil.del(myDir.getPath());
+                        System.out.println(DateUtil.date()+"删除历史数据："+myDir.getPath());
+                    }
+                }
+            }
+
+        }
+
+
+    }
+    public int rmaps根据文件路径提取格点数据(String path, DateTime myDate) {
+        int count = 0;
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
         SimpleDateFormat df2 = new SimpleDateFormat("yyyyMMddHH");
         String datePath1 = df.format(myDate);
@@ -286,19 +542,19 @@ public class Grib2处理 {
                                     Date date1 = ((Grib2Pds.PdsInterval) tempPds).getIntervalTimeEnd().toDate();
                                     forecastTime = +(int) DateUtil.between(date1, mydate, DateUnit.HOUR);
                                 }
-                                String myType=Rmaps数据类型合并文件夹(stringType);
-                                String myDirNameSave=myDirNameSaveBase+myType+"\\"+datePath1+"\\";
-                                String myFileName=myDirNameSave+"RMAPS_"+stringType+"_"+timePath1+"_"+String.format("%04d",forecastTime)+".txt";
-                                if(!FileUtil.exist(myFileName)){
-                                    File myFile= FileUtil.touch(myFileName);
+                                String myType = Rmaps数据类型合并文件夹(stringType);
+                                String myDirNameSave = myDirNameSaveBase + myType + "\\" + datePath1 + "\\";
+                                String myFileName = myDirNameSave + "RMAPS_" + stringType + "_" + timePath1 + "_" + String.format("%04d", forecastTime) + ".txt";
+                                if (!FileUtil.exist(myFileName)) {
+                                    File myFile = FileUtil.touch(myFileName);
                                     Grib2Gds.LambertConformal lc = (Grib2Gds.LambertConformal) tempGds;
                                     GdsHorizCoordSys gg = lc.makeHorizCoordSys();
-                                    LatLonPoint centerLatLon= gg.getCenterLatLon();
+                                    LatLonPoint centerLatLon = gg.getCenterLatLon();
                                     // var ss2=gg.proj.getProjectionParameters();
                                     Grib2SectionDataRepresentation drs = gr2.getDataRepresentationSection();
                                     float[] data = gr2.readData(raf, drs.getStartingPosition());
-                                    rmaps格点数据Model myData=new rmaps格点数据Model(Earth.WGS84_EARTH_RADIUS_KM,tempGds.getNameShort(),centerLatLon.getLatitude(),centerLatLon.getLongitude(),gg.startx,gg.starty,gg.nxRaw,gg.nyRaw,gg.dx,gg.dy,forecastTime,stringType,data);
-                                    FileUtil.appendUtf8String(JSONUtil.toJsonStr(JSONUtil.parseObj(myData, true,true)),myFile);
+                                    rmaps格点数据Model myData = new rmaps格点数据Model(Earth.WGS84_EARTH_RADIUS_KM, tempGds.getNameShort(), centerLatLon.getLatitude(), centerLatLon.getLongitude(), gg.startx, gg.starty, gg.nxRaw, gg.nyRaw, gg.dx, gg.dy, forecastTime, stringType, data);
+                                    FileUtil.writeUtf8String("[" + JSONUtil.toJsonStr(JSONUtil.parseObj(myData, true, true)) + "]", myFile);
                                     count++;
                                 }
 
@@ -322,6 +578,7 @@ public class Grib2处理 {
         }
         return count;
     }
+
     public boolean 判断数据是否存在(int purpose, int level, String dataType, DateTime myDateTime) {
         try {
             StationDaoImpl stationDao = new StationDaoImpl();
@@ -399,7 +656,7 @@ public class Grib2处理 {
         return myString;
     }
 
-    public String Rmaps数据类型识别(int paramType, int levelType, double level) {
+    public static String Rmaps数据类型识别(int paramType, int levelType, double level) {
         if (paramType == 0) {
             if (levelType == 1) {
                 return "TEM_surface";
@@ -475,23 +732,24 @@ public class Grib2处理 {
         }
         return "";
     }
-    public String Rmaps数据类型合并文件夹(String type){
-        if(type.contains("_")){
-            if(type.startsWith("Geopotential_height")){
-                return "Geopotential_height\\"+type;
-            }else if(type.equals("High_cloud") || type.equals("Low_cloud") || type.equals("Medium_cloud")){
+
+    public String Rmaps数据类型合并文件夹(String type) {
+        if (type.contains("_")) {
+            if (type.startsWith("Geopotential_height")) {
+                return "Geopotential_height\\" + type;
+            } else if (type.equals("High_cloud") || type.equals("Low_cloud") || type.equals("Medium_cloud")) {
                 return type;
             }
-           return type.split("_")[0]+"\\"+type;
-        }else{
-            if(type.equals("TEM") || type.equals("RHU") || type.equals("WIU10") || type.equals("WIV10")){
-                return type+"\\"+type;
+            return type.split("_")[0] + "\\" + type;
+        } else {
+            if (type.equals("TEM") || type.equals("RHU") || type.equals("WIU10") || type.equals("WIV10")) {
+                return type + "\\" + type;
             }
             return type;
         }
     }
 
-    public int Grib2数据类型转换(int d, int c, int n) {
+    public static int Grib2数据类型转换(int d, int c, int n) {
         int paramType = -1;
         if (d == 0 && c == 0 && n == 0) {
             // 温度
@@ -568,7 +826,7 @@ public class Grib2处理 {
         return new String[]{"TMP", "ERH", "EDA10", "TMAX", "TMIN"};
     }
 
-    public int[] 根据经纬度获取数据行数(double startLat, double deltaLat, double startLon, double deltaLon, double myLat, double myLon) {
+    public static int[] 根据经纬度获取数据行数(double startLat, double deltaLat, double startLon, double deltaLon, double myLat, double myLon) {
         int[] myRow = {-1, -1};
         myRow[0] = (int) Math.round((myLat - startLat) / deltaLat);
         myRow[1] = (int) Math.round((myLon - startLon) / deltaLon);
@@ -633,15 +891,15 @@ public class Grib2处理 {
             List<File> myfilesLS = FileUtil.loopFiles(myDirName, new FileFilter() {
                 @Override
                 public boolean accept(File pathname) {
-                    return pathname.getName().contains("ALL_"+DateUtil.format(myDateUtc, "yyyyMMddHHmm"));
+                    return pathname.getName().contains("ALL_" + DateUtil.format(myDateUtc, "yyyyMMddHHmm"));
                 }
             });
-           // myfiles.sort(Comparator.comparing(File::getName));
-            List<File> myfiles=new ArrayList<>();
-            for(int i=0;i<=96;i++){
-                for (File fil:myfilesLS
-                     ) {
-                    if(fil.getName().endsWith(String.format("%03d",i)+"01.GRB2")){
+            // myfiles.sort(Comparator.comparing(File::getName));
+            List<File> myfiles = new ArrayList<>();
+            for (int i = 0; i <= 96; i++) {
+                for (File fil : myfilesLS
+                ) {
+                    if (fil.getName().endsWith(String.format("%03d", i) + "01.GRB2")) {
                         myfiles.add(fil);
                         break;
                     }
@@ -658,17 +916,17 @@ public class Grib2处理 {
                         if (dataList.size() > 0) {
                             if (!dataListLS.isEmpty()) {
                                 //判断上一组数据是否和当前数据是连续临近时次
-                                boolean sxBS=dataListLS.get(0).getSX()+1==dataList.get(0).getSX();
+                                boolean sxBS = dataListLS.get(0).getSX() + 1 == dataList.get(0).getSX();
                                 List<Rmaps数值预报站点Model> dataListRk = new ArrayList<>();
                                 for (Rmaps数值预报站点Model item : dataList
                                 ) {
                                     try {
-                                        if(sxBS){
+                                        if (sxBS) {
                                             if (dataListLS.stream().anyMatch(y -> y.getMyDate().equals(item.getMyDate()) && y.getSX() + 1 == item.getSX() && y.getID().equals(item.getID()))) {
                                                 Rmaps数值预报站点Model datals = dataListLS.stream().filter(y -> y.getMyDate().equals(item.getMyDate()) && y.getSX() + 1 == item.getSX() && y.getID().equals(item.getID())).findFirst().get();
                                                 dataListRk.add(new Rmaps数值预报站点Model(item, NumberUtil.round(item.getPRE() - datals.getPRE(), 2).doubleValue()));
                                             }
-                                        }else{
+                                        } else {
                                             //如果时次不连续，则不对累计降水量进行处理
                                             dataListRk.add(new Rmaps数值预报站点Model(item));
                                         }
@@ -702,6 +960,7 @@ public class Grib2处理 {
         }
 
     }
+
     public void rmaps格点提取(DateTime myDate) {
 
         DateTime myDateUtc = DateUtil.offsetHour(myDate, -8);
@@ -709,15 +968,15 @@ public class Grib2处理 {
         List<File> myfilesLS = FileUtil.loopFiles(myDirName, new FileFilter() {
             @Override
             public boolean accept(File pathname) {
-                return pathname.getName().contains("ALL_"+DateUtil.format(myDateUtc, "yyyyMMddHHmm"));
+                return pathname.getName().contains("ALL_" + DateUtil.format(myDateUtc, "yyyyMMddHHmm"));
             }
         });
         // myfiles.sort(Comparator.comparing(File::getName));
-        List<File> myfiles=new ArrayList<>();
-        for(int i=0;i<=96;i++){
-            for (File fil:myfilesLS
+        List<File> myfiles = new ArrayList<>();
+        for (int i = 0; i <= 96; i++) {
+            for (File fil : myfilesLS
             ) {
-                if(fil.getName().endsWith(String.format("%03d",i)+"01.GRB2")){
+                if (fil.getName().endsWith(String.format("%03d", i) + "01.GRB2")) {
                     myfiles.add(fil);
                     break;
                 }
@@ -726,11 +985,11 @@ public class Grib2处理 {
         if (myfiles.size() > 0) {
             for (File file : myfiles
             ) {
-                try{
-                   int count= rmaps根据文件路径提取格点数据(file.getPath(),myDate);
-                   if(count>0){
-                       System.out.println(StrUtil.format("{}处理{}起报{}时{}条RMAPS格点数据", DateUtil.date(),DateUtil.format(myDate, "yyyy年MM月dd日HH时") ,StrUtil.sub(file.getName(),-10,-7), count));
-                   }
+                try {
+                    int count = rmaps根据文件路径提取格点数据(file.getPath(), myDate);
+                    if (count > 0) {
+                        System.out.println(StrUtil.format("{}处理{}起报{}时{}条RMAPS格点数据", DateUtil.date(), DateUtil.format(myDate, "yyyy年MM月dd日HH时"), StrUtil.sub(file.getName(), -10, -7), count));
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -739,28 +998,89 @@ public class Grib2处理 {
 
     }
 
-    public boolean rmaps格点数据是否存在(DateTime myDate){
-        int maxHour=72;
-        if(myDate.hour(true)==20){
-            maxHour=96;
+    public static void rmapsJson格点提取(DateTime myDate) {
+
+        try {
+            DateTime myDateUtc = DateUtil.offsetHour(myDate, -8);
+            String myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "\\区台数值预报文件\\rmaps数据\\" + DateUtil.format(myDate, "yyyyMMdd") + "\\";
+            List<File> myfilesLS = FileUtil.loopFiles(myDirName, new FileFilter() {
+                @Override
+                public boolean accept(File pathname) {
+                    return pathname.getName().contains("ALL_" + DateUtil.format(myDateUtc, "yyyyMMddHHmm"));
+                }
+            });
+            // myfiles.sort(Comparator.comparing(File::getName));
+            List<File> myfiles = new ArrayList<>();
+            for (int i = 0; i <= 96; i++) {
+                for (File fil : myfilesLS
+                ) {
+                    if (fil.getName().endsWith(String.format("%03d", i) + "01.GRB2")) {
+                        myfiles.add(fil);
+                        break;
+                    }
+                }
+            }
+            if (myfiles.size() > 0) {
+                for (File file : myfiles
+                ) {
+                    try {
+                        rmaps风流场处理(file.getPath(),myDate);
+                        //rmaps风流场处理1公里(file.getPath(),myDate);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+
+            }
+
+
+        } catch (IORuntimeException e) {
+            e.printStackTrace();
         }
-        boolean bs=false;
-        try{
+
+    }
+
+    public boolean rmaps格点数据是否存在(DateTime myDate) {
+        int maxHour = 72;
+        if (myDate.hour(true) == 20) {
+            maxHour = 96;
+        }
+        boolean bs = false;
+        try {
             String myDirNameSaveBase = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "\\区台数值预报文件\\szyb\\格点数据\\rmaps数据\\";
             int finalMaxHour = maxHour;
-            var ssss=FileUtil.loopFiles(myDirNameSaveBase, pathname -> pathname.getName().endsWith(DateUtil.format(myDate, "yyyyMMddHH")+"_"+String.format("%04d", finalMaxHour)+".txt"));
-            if(ssss.size()>=26){
-                bs= true;
+            var ssss = FileUtil.loopFiles(myDirNameSaveBase, pathname -> pathname.getName().endsWith(DateUtil.format(myDate, "yyyyMMddHH") + "_" + String.format("%04d", finalMaxHour) + ".txt"));
+            if (ssss.size() >= 26) {
+                bs = true;
             }
         } catch (Exception e) {
             e.printStackTrace();
-            bs=false;
-        }
-        finally {
+            bs = false;
+        } finally {
             return bs;
         }
     }
-
+    public static boolean rmapsJson风流场数据是否存在(DateTime myDate) {
+        int maxHour = 72;
+        if (myDate.hour(true) == 20) {
+            maxHour = 96;
+        }
+        boolean bs = false;
+        try {
+            String myDirNameSaveBase = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/json/rmaps数据/风流场/";
+            var ssss = FileUtil.loopFiles(myDirNameSaveBase, pathname -> pathname.getName().contains(DateUtil.format(myDate, "yyyyMMddHH")));
+            if (ssss.size() >= maxHour) {
+                bs = true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            bs = false;
+        } finally {
+            return bs;
+        }
+    }
 
     private void 预报数据ModelConvertRmaps数据处理(List<Rmaps数值预报站点Model> dataLists, List<区台数值预报数据Model> datasLS) {
         for (区台数值预报数据Model item : datasLS

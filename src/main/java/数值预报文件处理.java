@@ -12,7 +12,13 @@ import java.util.List;
 
 public class 数值预报文件处理 {
     public void ftp处理() {
+
         try {
+            try {
+                rmaps同步();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             try {
                 格点预报同步();
             } catch (Exception e) {
@@ -23,11 +29,7 @@ public class 数值预报文件处理 {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            try {
-                rmaps同步();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
