@@ -13,6 +13,7 @@ import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONException;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import model.*;
@@ -231,14 +232,10 @@ public class Grib2处理 {
         return dataLists;
     }
 
-    public static void rmaps风流场处理(String path,DateTime myDate) {
+    public static void rmapsJson处理(String path,DateTime myDate) {
         RandomAccessFile raf = null;
         try {
-            double dlo=0.05,dla=0.05,lo1=92,lo2=121,la1=53,la2=32;
-            int loCount=(int)Math.round((lo2-lo1)/dlo);
-            int laCount=(int)Math.round(-1*(la2-la1)/dlo);
-            lo2=NumberUtil.round(loCount*dlo+lo1,3).doubleValue();
-            la2=NumberUtil.round(laCount*dla*-1+la1,3).doubleValue();
+
             SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
             SimpleDateFormat df2 = new SimpleDateFormat("yyyyMMddHH");
             String datePath1 = df.format(myDate);
@@ -247,7 +244,9 @@ public class Grib2处理 {
             int myforecastTime=-1;
             raf = new RandomAccessFile(path, "r");
             Grib2RecordScanner scan = new Grib2RecordScanner(raf);
-            JSONArray array = new JSONArray();
+            JSONArray array3 = new JSONArray();
+            JSONArray array10 = new JSONArray();
+            double dlo3=0.03,dlo10=0.1;
             while (scan.hasNext()) {
                 Grib2Record gr2 = scan.next();
                 // section 0 指示段 包含GRIB、学科、GRIB 码版本号、资料长度
@@ -283,40 +282,8 @@ public class Grib2处理 {
                                     Date date1 = ((Grib2Pds.PdsInterval) tempPds).getIntervalTimeEnd().toDate();
                                     forecastTime = +(int) DateUtil.between(date1, mydate, DateUnit.HOUR);
                                 }
-
-                                int count = 0;
-
-                                Double[] datasz = new Double[(loCount+1) * (laCount+1)];
-                                for (int i = 0; i <= loCount; i++) {
-                                    for (int j = 0; j <= laCount; j++) {
-                                        var proLS = gg.proj.latLonToProj(la1 - j * dla, lo1 + i * dlo);
-                                        int[] rowsz = 根据经纬度获取数据行数(gg.startx, gg.dx, gg.starty, gg.dy, proLS.getX(), proLS.getY());
-                                        if (rowsz.length == 2 && rowsz[0] >= 0 && rowsz[1] >= 0 && rowsz[0] <= gg.nx && rowsz[1] < gg.ny) {
-                                            datasz[count++] = round(data[(rowsz[1] * gg.nx + rowsz[0])], 2).doubleValue();
-                                            //dataLists.add(new 区台数值预报数据Model(stations.get(i).getID(), stations.get(i).getName(), DateUtil.offsetHour(mydate, forecastTime), DateUtil.date(mydate), forecastTime, stringType, value));
-                                        }
-                                    }
-                                }
-
-                                JSONObject json1 = JSONUtil.createObj()
-                                        .putOnce("parameterCategory", c)
-                                        .putOnce("parameterNumber", n)
-                                        .putOnce("lo1", lo1)
-                                        .putOnce("lo2", lo2)
-                                        .putOnce("la1", la1)
-                                        .putOnce("la2", la2)
-                                        .putOnce("dx", dlo)
-                                        .putOnce("dy", dla)
-                                        .putOnce("nx", loCount)
-                                        .putOnce("ny", laCount)
-                                        .putOnce("forecastTime", DateUtil.formatDateTime(DateUtil.offsetHour(mydate, forecastTime)))
-                                        .putOnce("datetime", DateUtil.formatDateTime(mydate))
-                                        .putOnce("parameterNumberName", stringType);
-                                JSONObject json2 = JSONUtil.createObj()
-                                        .putOnce("data", datasz)
-                                        .putOnce("header", json1);
-
-                                array.add(json2);
+                                array3.add(rmaps风流场Json处理(0.03,0.03,105.2,115,43.4,37.7,data,gg,mydate,c,n,stringType,forecastTime));
+                                array10.add(rmaps风流场Json处理(0.1,0.1,92,121,53,32,data,gg,mydate,c,n,stringType,forecastTime));
                             }
                         }
                     } catch (Exception e) {
@@ -325,12 +292,8 @@ public class Grib2处理 {
                 }
             }
             String myDirNameSave = myDirNameSaveBase  + datePath1 + "\\";
-            String myFileName = myDirNameSave + "RMAPS_wind_"+dlo+"_"+ timePath1 + "_" + String.format("%04d", myforecastTime) + ".json";
-            if (!FileUtil.exist(myFileName)) {
-                File myFile = FileUtil.touch(myFileName);
-                FileUtil.writeUtf8String(array.toString(), myFile);
-                System.out.println(DateUtil.date() + "处理" + DateUtil.format(myDate, "MM月dd日HH时") + "起报" + myforecastTime+ "时Rmaps风流场数据。");
-            }
+            保存风流场数据(myDate, timePath1, myforecastTime, array3, dlo3, myDirNameSave);
+            保存风流场数据(myDate, timePath1, myforecastTime, array10, dlo10, myDirNameSave);
         } catch (Exception e) {
             e.printStackTrace();
             if (raf != null) {
@@ -342,6 +305,58 @@ public class Grib2处理 {
             }
         }
 
+    }
+
+    private static void 保存风流场数据(DateTime myDate, String timePath1, int myforecastTime, JSONArray array10, double dlo10, String myDirNameSave) {
+        String myFileName10 = myDirNameSave + "RMAPS_wind_"+dlo10+"_"+ timePath1 + "_" + String.format("%04d", myforecastTime) + ".json";
+        if (!FileUtil.exist(myFileName10)) {
+            File myFile = FileUtil.touch(myFileName10);
+            FileUtil.writeUtf8String(array10.toString(), myFile);
+            System.out.println(DateUtil.date() + "处理" + DateUtil.format(myDate, "MM月dd日HH时") + "起报" + myforecastTime+ "时"+dlo10+"°间隔Rmaps风流场数据。");
+        }
+    }
+
+    private static JSONObject rmaps风流场Json处理(double dlo,double dla,double lo1,double lo2,double la1,double la2, float[] data,GdsHorizCoordSys gg,Date mydate,int c,int n,String stringType,int forecastTime){
+        //double dlo=0.05,dla=0.05,lo1=92,lo2=121,la1=53,la2=32;
+        try{
+            int loCount=(int)Math.round((lo2-lo1)/dlo);
+            int laCount=(int)Math.round(-1*(la2-la1)/dlo);
+            lo2=NumberUtil.round(loCount*dlo+lo1,3).doubleValue();
+            la2=NumberUtil.round(laCount*dla*-1+la1,3).doubleValue();
+            int count = 0;
+            Double[] datasz = new Double[(loCount+1) * (laCount+1)];
+            for (int i = 0; i <= loCount; i++) {
+                for (int j = 0; j <= laCount; j++) {
+                    var proLS = gg.proj.latLonToProj(la1 - j * dla, lo1 + i * dlo);
+                    int[] rowsz = 根据经纬度获取数据行数(gg.startx, gg.dx, gg.starty, gg.dy, proLS.getX(), proLS.getY());
+                    if (rowsz.length == 2 && rowsz[0] >= 0 && rowsz[1] >= 0 && rowsz[0] <= gg.nx && rowsz[1] < gg.ny) {
+                        datasz[count++] = round(data[(rowsz[1] * gg.nx + rowsz[0])], 2).doubleValue();
+                    }
+                }
+            }
+
+            JSONObject json1 = JSONUtil.createObj()
+                    .putOnce("parameterCategory", c)
+                    .putOnce("parameterNumber", n)
+                    .putOnce("lo1", lo1)
+                    .putOnce("lo2", lo2)
+                    .putOnce("la1", la1)
+                    .putOnce("la2", la2)
+                    .putOnce("dx", dlo)
+                    .putOnce("dy", dla)
+                    .putOnce("nx", loCount)
+                    .putOnce("ny", laCount)
+                    .putOnce("forecastTime", DateUtil.formatDateTime(DateUtil.offsetHour(mydate, forecastTime)))
+                    .putOnce("datetime", DateUtil.formatDateTime(mydate))
+                    .putOnce("parameterNumberName", stringType);
+            JSONObject json2 = JSONUtil.createObj()
+                    .putOnce("data", datasz)
+                    .putOnce("header", json1);
+            return json2;
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return new JSONObject();
+        }
     }
     public static void rmaps风流场处理1公里(String path,DateTime myDate) {
         RandomAccessFile raf = null;
@@ -1024,7 +1039,7 @@ public class Grib2处理 {
                 for (File file : myfiles
                 ) {
                     try {
-                        rmaps风流场处理(file.getPath(),myDate);
+                        rmapsJson处理(file.getPath(),myDate);
                         //rmaps风流场处理1公里(file.getPath(),myDate);
 
                     } catch (Exception e) {
