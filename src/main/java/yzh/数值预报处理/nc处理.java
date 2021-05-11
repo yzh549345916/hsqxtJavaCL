@@ -1,38 +1,31 @@
 package yzh.数值预报处理;
 
-import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.resource.ClassPathResource;
-import cn.hutool.core.lang.Filter;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.extra.ftp.Ftp;
 import cn.hutool.extra.ftp.FtpMode;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import com.google.common.collect.ImmutableList;
 import org.apache.commons.net.ftp.FTPFile;
 import org.junit.Test;
 import org.meteoinfo.data.meteodata.grads.GrADSDataInfo;
-import ucar.nc2.*;
-import ucar.nc2.Attribute;
 import ucar.nc2.Dimension;
+import ucar.nc2.NetcdfFile;
+import ucar.nc2.NetcdfFiles;
 import ucar.nc2.Variable;
-import ucar.nc2.util.CompareNetcdf2;
 import ucar.nc2.write.NetcdfCopier;
 import ucar.nc2.write.NetcdfFormatWriter;
 import yzh.数值预报处理.环境气象.jjjMOdel;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static java.lang.Float.NaN;
 
 
 public class nc处理 {
@@ -561,6 +554,14 @@ public class nc处理 {
         //System.out.println(compressCUACE("E:\\1.nc","E:\\123.nc"));
         //DateTime myDate = new DateTime("2021-04-23 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
         //京津冀(myDate);
+        try {
+            DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20);
+            nc处理.京津冀(myDate);
+            myDate= DateUtil.offsetDay(myDate,-1);
+            nc处理.京津冀(myDate);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         org.meteoinfo.data.meteodata.grads.GrADSDataInfo grADSDataInfo=new GrADSDataInfo();
         grADSDataInfo.readDataInfo("F:\\EMI\\cuace_loading_index.ctl");
        var s2=grADSDataInfo;

@@ -300,15 +300,6 @@
     <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../libs/MeteoInfo/slf4j-api-1.7.19.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library" exported="">
-      <library>
-        <CLASSES>
           <root url="jar://$MODULE_DIR$/../libs/MeteoInfo/wContour-1.7.0.jar!/" />
         </CLASSES>
         <JAVADOC />
@@ -327,7 +318,7 @@
     <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../libs/MeteoInfo/slf4j-simple-1.7.19.jar!/" />
+          <root url="jar://$MODULE_DIR$/../libs/jsch-0.1.55.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

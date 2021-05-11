@@ -1,7 +1,6 @@
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
-
 import cn.hutool.cron.CronUtil;
 import cn.hutool.cron.task.Task;
 import model.区台格点数值预报站点Model;
@@ -9,7 +8,6 @@ import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.Test;
 import yzh.dao.StationDao;
-import yzh.dao.StationDaoImpl;
 import yzh.util.SqlSessionFactoryUtil;
 import yzh.数值预报处理.nc处理;
 import yzh.数值预报处理.环境气象.EC高空处理为探空格式;
@@ -32,7 +30,7 @@ public class 主程序 {
         沙尘模式下载.压缩近7天的数据();
         CUACE定时处理();
         EC高空定时处理();
-        京津冀定时处理();
+        //京津冀定时处理();
 
         /*
         考虑到Quartz表达式的兼容性，且存在对于秒级别精度匹配的需求，Hutool可以通过设置使用秒匹配模式来兼容。

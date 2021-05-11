@@ -4,13 +4,19 @@ import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.extra.ftp.Ftp;
 import cn.hutool.extra.ftp.FtpMode;
+import cn.hutool.extra.ssh.Sftp;
 import org.junit.Test;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
 public class 数值预报文件处理 {
+    @Test
+    public void cs(){
+        沙尘模式同步();
+    }
     public void ftp处理() {
 
         try {
@@ -122,7 +128,34 @@ public class 数值预报文件处理 {
             System.out.println(e.getMessage());
         }
     }
+    public void 沙尘模式同步() {
+        try {
 
+            Sftp ftp = new Sftp("172.18.142.212", 22, "qxt", "qxt4348050");
+            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+            String format1 = df.format(DateUtil.offsetDay(new Date(),-1));
+           if(ftp.toParent()){
+               if(ftp.cd("vsftpd/shachen/product/data_beifen")){
+                   List<String> myfiles=ftp.ls(".", lsEntry -> lsEntry.getFilename().contains(format1));
+                   if(myfiles.size()>0){
+                       String myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/" ;
+                       String myFileName=myDirName+"qtshachen_"+format1+".nc";
+                       File myfile=FileUtil.file(myFileName);
+                       if(myfile.exists()){
+                           myfile.delete();
+                       }
+                       ftp.download(myfiles.get(0),myfile);
+                   }
+               }
+
+           }
+
+
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
 
 
     public void 站点预报同步() {
