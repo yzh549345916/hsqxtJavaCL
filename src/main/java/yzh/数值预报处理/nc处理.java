@@ -523,7 +523,6 @@ public class nc处理 {
         }
         return dates;
     }
-
     public static Boolean compressCUACE(String sPath, String dPath) {
 
         try {
@@ -543,7 +542,171 @@ public class nc处理 {
             return false;
         }
     }
+    public static void 区台沙尘模式数据处理(Date myDate,String resourPath) {
+        DateTime myDateUtc = DateUtil.offsetHour(myDate, -8);
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 
+        String format1 = df.format(myDateUtc);
+        SimpleDateFormat df2 = new SimpleDateFormat("yyyy-MM-dd-HH");
+        String format2 = df2.format(myDateUtc);
+        String myDirNameBase = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/shachen/" +format1+"/";
+        if (!FileUtil.exist(myDirNameBase)) {
+            FileUtil.mkdir(myDirNameBase);
+        }
+        try {
+            NetCDFDataInfo netCDFDataInfo = new NetCDFDataInfo(resourPath);
+            netCDFDataInfo.readDataInfo();
+            if (netCDFDataInfo.xDim != null && netCDFDataInfo.yDim != null && netCDFDataInfo.tDim != null) {
+                List<Date> myDates = 时间戳转时间(netCDFDataInfo.tDim.getDimValue());
+                int xCountS = -1, xCountE = -1, yCountS = -1, yCountE = -1;
+                xCountS = (int) Math.round((60 - netCDFDataInfo.xDim.getDimValue(0)) / netCDFDataInfo.xDim.getStep());
+                xCountE = (int) Math.round((140 - netCDFDataInfo.xDim.getDimValue(0)) / netCDFDataInfo.xDim.getStep());
+                yCountS = (int) Math.round((40 - netCDFDataInfo.yDim.getDimValue(0)) / netCDFDataInfo.yDim.getStep());
+                yCountE = (int) Math.round((60 - netCDFDataInfo.yDim.getDimValue(0)) / netCDFDataInfo.yDim.getStep());
+                for (Variable var1 : netCDFDataInfo.ncVariables
+                ) {
+                    if (var1.getRank() == 3) {
+                        JSONObject json1;
+                        String myName = var1.getFullName();
+                        String myFileName1 = myDirNameBase + myName + "/" + format1 + "/";
+                        if (!FileUtil.exist(myFileName1)) {
+                            FileUtil.mkdir(myFileName1);
+                        }
+                        List<Dimension> dims = var1.getDimensions();
+                        for (int i = 0; i < myDates.size(); i++) {
+                            try {
+                                String myFileName =myFileName1+ "CUACE_" + myName + "_" + format2 + "_" + String.format("%04d", DateUtil.between(myDateUtc, myDates.get(i), DateUnit.HOUR)) + ".json";
+                                if (!FileUtil.exist(myFileName)) {
+                                    List ranges = new ArrayList();
+                                    for (var dimLs : dims
+                                    ) {
+                                        switch (dimLs.getName()) {
+                                            case "lat":
+                                                ranges.add(new ucar.ma2.Range(yCountS, yCountE));
+                                                break;
+                                            case "lon":
+                                                ranges.add(new ucar.ma2.Range(xCountS, xCountE));
+                                                break;
+                                            case "time":
+                                                ranges.add(new ucar.ma2.Range(i, i));
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                    }
+                                    float[] data = (float[]) var1.read(ranges).reduce(0).copyTo1DJavaArray();
+                                    for (int k = 0; k < data.length; k++) {
+                                        if (Float.isNaN(data[k])) {
+                                            data[k] = -99999;
+                                        }
+                                    }
+                                    json1 = JSONUtil.createObj()
+                                            .putOnce("datetime", DateUtil.format(myDates.get(0), "yyyy/MM/dd HH:mm:ss"))
+                                            .putOnce("forecastTime", DateUtil.format(myDates.get(i), "yyyy/MM/dd HH:mm:ss"))
+                                            .putOnce("paramType", myName)
+                                            .putOnce("projection", "LongLat")
+                                            .putOnce("startLat", "40")
+                                            .putOnce("startLon", "60.00")
+                                            .putOnce("endLat", "60")
+                                            .putOnce("endLon", "140.00")
+                                            .putOnce("latCount", yCountE - yCountS + 1)
+                                            .putOnce("lonCount", xCountE - xCountS + 1)
+                                            .putOnce("latStep", netCDFDataInfo.yDim.getStep())
+                                            .putOnce("lonStep", netCDFDataInfo.xDim.getStep())
+                                            .putOnce("units", var1.findAttributeString("units", ""))
+                                            .putOnce("data", data);
+                                    File myFile = FileUtil.touch(myFileName);
+                                    FileUtil.writeUtf8String("["+JSONUtil.toJsonStr(json1)+"]", myFile);
+                                }
+                            } catch (ucar.ma2.InvalidRangeException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                    } else if (var1.getRank() == 4) {
+                        JSONObject json1;
+                        String myName = var1.getFullName();
+                        List<Dimension> dims = var1.getDimensions();
+                        double[] levels = netCDFDataInfo.zDim.getValues();
+                        for (int j = 0; j < levels.length; j++) {
+                            String myFileName1 = myDirNameBase + myName + "/" +myName+"_"+Math.round(levels[j])+"/"+ format1 + "/";
+                            if (!FileUtil.exist(myFileName1)) {
+                                FileUtil.mkdir(myFileName1);
+                            }
+
+                            for (int i = 0; i < myDates.size(); i++) {
+                                try {
+                                    String myFileName= myFileName1+"CUACE_" + myName+"_"+Math.round(levels[j]) + "_" + format2 + "_" + String.format("%04d", DateUtil.between(myDateUtc, myDates.get(i), DateUnit.HOUR)) + ".json";
+                                    if (!FileUtil.exist(myFileName)){
+                                        List ranges = new ArrayList();
+                                        for (var dimLs : dims
+                                        ) {
+                                            switch (dimLs.getName()) {
+                                                case "lat":
+                                                    ranges.add(new ucar.ma2.Range(yCountS, yCountE));
+                                                    break;
+                                                case "lon":
+                                                    ranges.add(new ucar.ma2.Range(xCountS, xCountE));
+                                                    break;
+                                                case "time":
+                                                    ranges.add(new ucar.ma2.Range(i, i));
+                                                    break;
+                                                case "level":
+                                                    ranges.add(new ucar.ma2.Range(j, j));
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
+                                        }
+                                        float[] data = (float[]) var1.read(ranges).reduce(0).copyTo1DJavaArray();
+                                        for (int k = 0; k < data.length; k++) {
+                                            if (Float.isNaN(data[k])) {
+                                                data[k] = -99999;
+                                            }
+                                        }
+                                        json1 = JSONUtil.createObj()
+                                                .putOnce("datetime", DateUtil.format(myDates.get(0), "yyyy/MM/dd HH:mm:ss"))
+                                                .putOnce("forecastTime", DateUtil.format(myDates.get(i), "yyyy/MM/dd HH:mm:ss"))
+                                                .set("level", levels[j])
+                                                .set("paramType", myName)
+                                                .set("projection", "LongLat")
+                                                .set("startLat", "40")
+                                                .set("startLon", "60.00")
+                                                .set("endLat", "60")
+                                                .set("endLon", "140.00")
+                                                .set("latCount", yCountE - yCountS + 1)
+                                                .set("lonCount", xCountE - xCountS + 1)
+                                                .set("latStep", netCDFDataInfo.yDim.getStep())
+                                                .set("lonStep", netCDFDataInfo.xDim.getStep())
+                                                .set("units", var1.findAttributeString("units", ""))
+                                                .set("data", data);
+
+                                        File myFile = FileUtil.touch(myFileName);
+                                        FileUtil.writeUtf8String("["+JSONUtil.toJsonStr(json1)+"]", myFile);
+                                        json1.size();
+                                    }
+
+
+                                } catch (ucar.ma2.InvalidRangeException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+
+                        }
+
+                        var1.getSize();
+                    }
+                }
+            }
+            netCDFDataInfo.close();
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+
+    }
     @Test
     public void cs() {
         //人影数据();

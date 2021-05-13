@@ -1,11 +1,18 @@
+import cn.hutool.core.date.DatePattern;
+import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.extra.ftp.Ftp;
 import cn.hutool.extra.ftp.FtpMode;
 import cn.hutool.extra.ssh.Sftp;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import org.junit.Test;
+import yzh.数值预报处理.nc处理meteo;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -15,7 +22,8 @@ import java.util.List;
 public class 数值预报文件处理 {
     @Test
     public void cs(){
-        沙尘模式同步();
+        DateTime myDate = new DateTime("2021-05-12 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
+        沙尘模式同步(myDate);
     }
     public void ftp处理() {
 
@@ -128,23 +136,54 @@ public class 数值预报文件处理 {
             System.out.println(e.getMessage());
         }
     }
-    public void 沙尘模式同步() {
+    public void 沙尘模式同步(Date date) {
         try {
-
             Sftp ftp = new Sftp("172.18.142.212", 22, "qxt", "qxt4348050");
             SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-            String format1 = df.format(DateUtil.offsetDay(new Date(),-1));
-           if(ftp.toParent()){
+            String format1 = df.format(date);
+            String myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/shachen/" ;
+            File fileCon=new File(myDirName+format1+"_log.json");
+            JSONArray array=new JSONArray();
+            try{
+                if(fileCon.exists()){
+                    String myConf=FileUtil.readUtf8String(fileCon);
+                    if(!myConf.isBlank()){
+                        array=JSONUtil.parseArray(myConf);
+                        for(int i=0;i<array.size();i++){
+                            String datetimeStrLs =(String)((JSONObject)array.get(i)).get("datetime");
+                            if(datetimeStrLs.equals(DateUtil.formatDateTime(date))){
+                                return;
+                            }
+                        }
+                    }
+
+                }else{
+                    FileUtil.touch(fileCon);
+                }
+            } catch (IORuntimeException e) {
+                e.printStackTrace();
+            }
+            if(ftp.toParent()){
                if(ftp.cd("vsftpd/shachen/product/data_beifen")){
                    List<String> myfiles=ftp.ls(".", lsEntry -> lsEntry.getFilename().contains(format1));
                    if(myfiles.size()>0){
-                       String myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/" ;
                        String myFileName=myDirName+"qtshachen_"+format1+".nc";
                        File myfile=FileUtil.file(myFileName);
-                       if(myfile.exists()){
-                           myfile.delete();
+                       if(!myfile.exists()){
+                           ftp.download(myfiles.get(0),myfile);
                        }
-                       ftp.download(myfiles.get(0),myfile);
+                       nc处理meteo.区台沙尘模式数据处理(date,myFileName);
+                       int count=1;
+                       try{
+                           JSONObject json1 = JSONUtil.createObj()
+                                   .putOnce("count", count)
+                                   .putOnce("datetime", DateUtil.formatDateTime(date));
+                           array.put(json1);
+                           FileUtil.writeUtf8String(array.toString(),fileCon);
+                       } catch (IORuntimeException e) {
+                           e.printStackTrace();
+                       }
+
                    }
                }
 
@@ -156,7 +195,22 @@ public class 数值预报文件处理 {
             System.out.println(e.getMessage());
         }
     }
+    public void 沙尘模式删除历史数据(){
+        Sftp ftp = new Sftp("172.18.142.212", 22, "qxt", "qxt4348050");
+        if(ftp.toParent()){
+            if(ftp.cd("vsftpd/shachen/product/data_beifen")){
+                for(int i=-45;i<-30;i++){
+                    SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+                    String format1 = df.format(DateUtil.offsetDay(new Date(),i));
+                    List<String> myfiles=ftp.ls(".", lsEntry -> lsEntry.getFilename().contains(format1));
+                    if(myfiles.size()>0){
+                        ftp.delFile(myfiles.get(0));
+                    }
+                }
+            }
 
+        }
+    }
 
     public void 站点预报同步() {
         try {
