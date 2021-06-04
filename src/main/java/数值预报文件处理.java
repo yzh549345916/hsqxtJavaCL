@@ -6,7 +6,6 @@ import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.extra.ftp.Ftp;
-import cn.hutool.extra.ftp.FtpMode;
 import cn.hutool.extra.ssh.Sftp;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -22,6 +21,7 @@ import java.util.List;
 public class 数值预报文件处理 {
     @Test
     public void cs(){
+        //沙尘模式删除历史数据();
         DateTime myDate = new DateTime("2021-05-12 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
         沙尘模式同步(myDate);
     }
@@ -51,7 +51,7 @@ public class 数值预报文件处理 {
 
     public void 格点预报同步() {
         try {
-            Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8, FtpMode.Passive);
+            Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8);
             ftp.setBackToPwd(false);
             SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
             String format1 = df.format(new Date());
@@ -84,7 +84,7 @@ public class 数值预报文件处理 {
 
     public void rmaps同步() {
         try {
-            Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8, FtpMode.Passive);
+            Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8);
             ftp.setBackToPwd(false);
             SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
             String format1 = df.format(new Date());
@@ -136,13 +136,15 @@ public class 数值预报文件处理 {
             System.out.println(e.getMessage());
         }
     }
-    public void 沙尘模式同步(Date date) {
+    public static void 沙尘模式同步(Date date) {
         try {
             Sftp ftp = new Sftp("172.18.142.212", 22, "qxt", "qxt4348050");
             SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
             String format1 = df.format(date);
+            SimpleDateFormat df2 = new SimpleDateFormat("yyyy-MM");
+            String format2 = df2.format(date);
             String myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/shachen/" ;
-            File fileCon=new File(myDirName+format1+"_log.json");
+            File fileCon=new File(myDirName+format2+"_log.json");
             JSONArray array=new JSONArray();
             try{
                 if(fileCon.exists()){
@@ -180,22 +182,21 @@ public class 数值预报文件处理 {
                                    .putOnce("datetime", DateUtil.formatDateTime(date));
                            array.put(json1);
                            FileUtil.writeUtf8String(array.toString(),fileCon);
+                           System.out.println(DateUtil.date() + "处理"+format1+"区台沙尘模式数据");
                        } catch (IORuntimeException e) {
                            e.printStackTrace();
                        }
 
                    }
                }
-
            }
-
-
-
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
+        沙尘模式删除历史数据();
     }
-    public void 沙尘模式删除历史数据(){
+
+    public static void 沙尘模式删除历史数据(){
         Sftp ftp = new Sftp("172.18.142.212", 22, "qxt", "qxt4348050");
         if(ftp.toParent()){
             if(ftp.cd("vsftpd/shachen/product/data_beifen")){
@@ -210,11 +211,20 @@ public class 数值预报文件处理 {
             }
 
         }
+        String myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/shachen/" ;
+        for(int i=-15;i<=-3;i++){
+            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+            String format1 = df.format(DateUtil.offsetDay(new Date(),i));
+            String myFileName=myDirName+"qtshachen_"+format1+".nc";
+            if(FileUtil.exist(myFileName)){
+                FileUtil.del(myFileName);
+            }
+        }
     }
 
     public void 站点预报同步() {
         try {
-            Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8, FtpMode.Passive);
+            Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8);
             ftp.setBackToPwd(true);
             SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
             String format1 = df.format(new Date());

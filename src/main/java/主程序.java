@@ -10,7 +10,7 @@ import org.junit.Test;
 import yzh.dao.StationDao;
 import yzh.util.SqlSessionFactoryUtil;
 import yzh.数值预报处理.nc处理;
-import yzh.数值预报处理.环境气象.EC高空处理为探空格式;
+import yzh.数值预报处理.环境气象.EC入库;
 import yzh.环境气象.沙尘模式下载;
 
 import java.util.List;
@@ -18,7 +18,8 @@ import java.util.List;
 
 public class 主程序 {
     public static void main(String[] args) {
-
+        EC高空定时处理();
+        区台沙尘模式数据定时处理();
         数值预报文件处理 szyb = new 数值预报文件处理();
         szyb.ftp处理();
         Grib2处理.历史数据删除();
@@ -29,8 +30,7 @@ public class 主程序 {
         沙尘模式下载.日常下载();
         沙尘模式下载.压缩近7天的数据();
         CUACE定时处理();
-        EC高空定时处理();
-        //京津冀定时处理();
+        京津冀定时处理();
 
         /*
         考虑到Quartz表达式的兼容性，且存在对于秒级别精度匹配的需求，Hutool可以通过设置使用秒匹配模式来兼容。
@@ -52,23 +52,20 @@ public class 主程序 {
                 京津冀定时处理();
             }
         });
-        CronUtil.schedule("40,45,50,59 4,5,13,14 * * *", new Task() {
-            @Override
-            public void execute() {
-                区台格点数值预报站点数据定时处理();
-            }
+        CronUtil.schedule("40,45,50,59 4,5,13,14 * * *", (Task) () -> 区台格点数值预报站点数据定时处理());
+        CronUtil.schedule("40 4,5 * * *", (Task) () -> {
+            区台沙尘模式数据定时处理();
+
         });
-        CronUtil.schedule("22 1 * * *", new Task() {
-            @Override
-            public void execute() {
-                区台格点数值预报站点数据历史处理();
-                RMAPS数值预报站点数据历史处理();
-                沙尘模式下载.压缩近7天的数据();
-                CUACE格点数据历史处理();
-                沙尘模式下载. 删除7天前的原始的数据();
-                nc处理.删除30天前的格点的数据();
-                京津冀历史处理();
-            }
+        CronUtil.schedule("22 1 * * *", (Task) () -> {
+            区台格点数值预报站点数据历史处理();
+            RMAPS数值预报站点数据历史处理();
+            沙尘模式下载.压缩近7天的数据();
+            CUACE格点数据历史处理();
+            沙尘模式下载. 删除7天前的原始的数据();
+            nc处理.删除30天前的格点的数据();
+            京津冀历史处理();
+            区台沙尘模式数据历史处理();
         });
         //CUACE08时每天15时左右，20时每天3点左右
         CronUtil.schedule("5,10,20,30,40 15,16,3,4 * * *", new Task() {
@@ -84,7 +81,8 @@ public class 主程序 {
                 RMAPS数值预报站点数据定时处理();
             }
         });
-        CronUtil.schedule("5,10,30,40 2,3,14,15 * * *", new Task() {
+        //2,3, 因为不需要20的，因此取消这两个时次的定时任务
+        CronUtil.schedule("20,40 14,15 * * *", new Task() {
             @Override
             public void execute() {
                 EC高空定时处理();
@@ -92,6 +90,27 @@ public class 主程序 {
         });
         CronUtil.setMatchSecond(true);
         CronUtil.start();
+    }
+    public static void 区台沙尘模式数据定时处理(){
+        DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-24);
+        数值预报文件处理.沙尘模式同步(myDate);
+        myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-48);
+        数值预报文件处理.沙尘模式同步(myDate);
+    }
+    public static void 区台沙尘模式数据历史处理(){
+        try{
+            DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-48);
+            for(int i=-144;i<0;i=i+24)
+            {
+                DateTime myTime=DateUtil.offsetHour(myDate,i);
+                数值预报文件处理.沙尘模式同步(myTime);
+            }
+
+            myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-48);
+            数值预报文件处理.沙尘模式同步(myDate);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
     public static void 区台格点数值预报站点数据定时处理(){
         DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20);
@@ -171,17 +190,17 @@ public class 主程序 {
         }
     }
     public static void EC高空定时处理(){
-        DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20-24);
+        DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 8-24);
         if(DateUtil.hour(DateUtil.date(),true)>12){
             myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 8);
         }
-        EC高空处理为探空格式.处理EC高空(myDate);
-        System.out.println(DateUtil.date()+"处理"+myDate+"的EC高空数据");
+        EC入库.处理EC(myDate);
+        System.out.println(DateUtil.date()+"处理"+myDate+"的EC数据");
     }
     @Test
     public static void cs(){
        try{
-
+           EC高空定时处理();
        } catch (Exception e) {
            e.printStackTrace();
        }

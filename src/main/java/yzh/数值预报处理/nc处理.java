@@ -7,7 +7,6 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.extra.ftp.Ftp;
-import cn.hutool.extra.ftp.FtpMode;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import org.apache.commons.net.ftp.FTPFile;
@@ -744,7 +743,7 @@ public class nc处理 {
                List<jjjMOdel> zdDataLists=new ArrayList<>();
                List<String> varNameLists=new ArrayList<>();
                String resourPath = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/jjj/"+ format1 + "/";
-               Ftp ftp = new Ftp("172.18.142.20", 21, "qxt", "qxt4348050", CharsetUtil.CHARSET_UTF_8, FtpMode.Passive);
+               Ftp ftp = new Ftp("172.18.142.20", 21, "qxt", "qxt4348050", CharsetUtil.CHARSET_UTF_8);
                ftp.setBackToPwd(true);
                List<FTPFile> ftpFiles=ftp.lsFiles("", ftpFile -> ftpFile.getName().contains(format3)&&ftpFile.getName().endsWith("nc"));
                if(ftpFiles.size()>0){

@@ -2,11 +2,13 @@ package yzh.数值预报处理;
 
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.extra.ssh.Sftp;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -23,11 +25,13 @@ import org.meteoinfo.projection.KnownCoordinateSystems;
 import org.meteoinfo.projection.ProjectionInfo;
 import yzh.util.SqlSessionFactoryUtil;
 import yzh.数值预报处理.环境气象.huanbao;
+import yzh.数值预报处理.环境气象.区台沙尘Model;
 import yzh.数值预报处理.环境气象.站点信息;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -51,10 +55,10 @@ public class nc处理meteo {
         Dimension xDimension = datainfo.getXDimension();
         List<站点信息> stations = new ArrayList<>();
         StationData stationData = new StationData();
+        SqlSessionFactory sqlSessionFactoryEc = SqlSessionFactoryUtil.getSqlSessionFactoryHuanbao();
+        SqlSession sessionEc = sqlSessionFactoryEc.openSession(true);
+        huanbao ecDao = sessionEc.getMapper(huanbao.class);
         try {
-            SqlSessionFactory sqlSessionFactoryEc = SqlSessionFactoryUtil.getSqlSessionFactoryHuanbao();
-            SqlSession sessionEc = sqlSessionFactoryEc.openSession();
-            huanbao ecDao = sessionEc.getMapper(huanbao.class);
             stations = ecDao.GetStationsByType("shachen");
             for (int i = 0; i < stations.size(); i++) {
                 stationData.addData(stations.get(i).getID(), stations.get(i).getLon(), stations.get(i).getLat(), 0);
@@ -69,21 +73,21 @@ public class nc处理meteo {
         String paramType = "DUSTDRY", paramChineseName = "干沉降";
         String myFileNameBase = myDirNameBase + paramType + "/";
         String stationFileNameBase = myDirNameBaseStation + paramType + "/";
-        沙尘json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, variableStrs, paramType, paramChineseName, myFileNameBase, true, "", stationData, stations, stationFileNameBase);
+        沙尘json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, variableStrs, paramType, paramChineseName, myFileNameBase, true, "", stationData, stations, stationFileNameBase,ecDao);
         variableStrs = new String[]{"EDUST1", "EDUST2", "EDUST3", "EDUST4", "EDUST5"};
         aDataInfo.setLevelIndex(0);
         paramType = "EDUST";
         paramChineseName = "起沙";
         myFileNameBase = myDirNameBase + paramType + "/";
         stationFileNameBase = myDirNameBaseStation + paramType + "/";
-        沙尘json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, variableStrs, paramType, paramChineseName, myFileNameBase, false, "ug/m2", stationData, stations, stationFileNameBase);
+        沙尘json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, variableStrs, paramType, paramChineseName, myFileNameBase, false, "ug/m2", stationData, stations, stationFileNameBase,ecDao);
         aDataInfo.setLevelIndex(0);
         variableStrs = new String[]{"PBLH"};
         paramType = "PBLH";
         paramChineseName = "边界层高度";
         myFileNameBase = myDirNameBase + paramType + "/";
         stationFileNameBase = myDirNameBaseStation + paramType + "/";
-        沙尘json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, variableStrs, paramType, paramChineseName, myFileNameBase, false, "ug/m2", stationData, stations, stationFileNameBase);
+        沙尘json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, variableStrs, paramType, paramChineseName, myFileNameBase, false, "ug/m2", stationData, stations, stationFileNameBase,ecDao);
         aDataInfo.setLevelIndex(0);
         paramType = "SURFACEDUST";
         paramChineseName = "地面沙尘浓度";
@@ -100,14 +104,16 @@ public class nc处理meteo {
         myFileNameBase = myDirNameBase + "PM2.5/";
         stationFileNameBase = myDirNameBaseStation + "PM2.5/";
         PM25json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, myFileNameBase, stationData, stations, stationFileNameBase);
+        同步沙尘模式数据(format1);
         /* variableStrs=new String[]{"PM2_5_DRY"};
         paramType="PM2.5";paramChineseName="PM2.5";
         myFileNameBase=myDirNameBase+paramType+"/";
         高空沙尘json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, variableStrs, paramType, paramChineseName, myFileNameBase,false,"");*/
     }
 
-    private static void 沙尘json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String[] variableStrs, String paramType, String paramChineseName, String myFileNameBase, boolean absBS, String defaultUnits, StationData stationData, List<站点信息> stations, String stationFileNameBase) {
+    private static void 沙尘json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String[] variableStrs, String paramType, String paramChineseName, String myFileNameBase, boolean absBS, String defaultUnits, StationData stationData, List<站点信息> stations, String stationFileNameBase,huanbao ecDao) {
         JSONArray jsonArray = new JSONArray();
+        List<区台沙尘Model> stationDataList=new ArrayList<>();
         for (int i = 0; i < tDimension.size(); i++) {
             aDataInfo.setTimeIndex(i);
             Variable variable = aDataInfo.getDataInfo().getVariable(variableStrs[0]);
@@ -147,6 +153,8 @@ public class nc处理meteo {
             StationData myStationData = myGridData.toStation(stationData);
             for (int k = 0; k < stations.size(); k++) {
                 var mySta = stations.get(k);
+                Date forecastDate = Date.from(tDimension.get(i).plusHours(8).toInstant(ZoneOffset.of("+8")));
+                stationDataList.add(new 区台沙尘Model(mySta.getID(),myDate,(int)DateUtil.between(myDate,forecastDate, DateUnit.HOUR),paramType, 1000.0,myStationData.getValue(k)));
                 JSONObject jsonStation = JSONUtil.createObj()
                         .set("datetime", DateUtil.format(myDate, "yyyy/MM/dd HH:mm:ss"))
                         .set("forecastTime", DateUtil.format(tDimension.get(i).plusHours(8), "yyyy/MM/dd HH:mm:ss"))
@@ -161,8 +169,12 @@ public class nc处理meteo {
                 jsonArray.add(jsonStation);
             }
         }
+        if(stationDataList.size()>0){
+            ecDao.insert_qtShaChen(stationDataList);
+        }
         String myStationFileName = StrUtil.format("{}shachen_station_{}_{}.json", stationFileNameBase, paramType, format2);
         File myStationFile = FileUtil.touch(myStationFileName);
+
         FileUtil.writeUtf8String(jsonArray.toString(), myStationFile);
     }
 
@@ -392,9 +404,55 @@ public class nc处理meteo {
         }
 
     }
+    public static void 同步沙尘模式数据(String dateStr){
+        try{
+            Sftp sftp = new Sftp("172.18.142.20", 22, "qxt", "qxt4348050");
+            String myDirNameBase = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/shachen/" + dateStr + "/";
+            sftp.cd("/other/shachenJson/gedian");
+            List<String> myfiles=sftp.ls(".", lsEntry -> lsEntry.getFilename().endsWith(dateStr));
+            if(myfiles.size()==0){
+                sftp.mkdir(dateStr);
+            }
+            递归上传文件夹(sftp,myDirNameBase,"/other/shachenJson/gedian/"+dateStr);
+            String myDirNameBaseStation = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/shachenStation/" + dateStr;
+            sftp.cd("/");
+            sftp.cd("/other/shachenJson/zhandian");
+            myfiles=sftp.ls(".", lsEntry -> lsEntry.getFilename().endsWith(dateStr));
+            if(myfiles.size()==0){
+                sftp.mkdir(dateStr);
+            }
+            递归上传文件夹(sftp,myDirNameBaseStation,"/other/shachenJson/zhandian/"+dateStr);
+            sftp.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        //sftp.put("E:\\cx\\C#\\20201121乡镇精细化预报\\更改说明.txt",".");
+    }
 
+    public static void 递归上传文件夹(Sftp sftp,String sPath,String dPath){
+        File[] myFiles1=FileUtil.ls(sPath);
+        if(sftp.cd("/")&&sftp.cd(dPath)){
+            for(File file1:myFiles1){
+                if(file1.isDirectory()){
+                    List<String> myfiles2=sftp.ls(".", lsEntry -> lsEntry.getFilename().endsWith(file1.getName()));
+                    if(myfiles2.size()==0){
+                        if(sftp.cd("/")&&sftp.cd(dPath)&&sftp.mkdir(file1.getName())) {
+                            递归上传文件夹(sftp,file1.getPath(),dPath+"/"+file1.getName());
+                        }
+                    }
+                }else{
+                    if(sftp.cd("/")&&sftp.cd(dPath)){
+                        sftp.put(file1.getPath(),".");
+                    }
+                }
+            }
+        }
+
+
+    }
     @Test
     public void cs() {
+        同步沙尘模式数据("2021-05-12");
         DateTime myDate = new DateTime("2021-05-12 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
         String path = "E:\\cx\\java\\呼市气象台java处理\\target\\区台数值预报文件\\szyb\\huanbao\\shachen\\qtshachen_2021-05-12.nc";
         区台沙尘模式数据处理(myDate, path);

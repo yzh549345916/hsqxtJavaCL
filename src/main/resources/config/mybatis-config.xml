@@ -58,5 +58,6 @@
         <mapper resource="mysql/dao/mapper/StationMapper.xml"/>
         <mapper resource="mysql/dao/mapper/RmapsMapper.xml"/>
         <mapper resource="mysql/dao/mapper/huanjing.xml"/>
+        <mapper resource="mapper/ECSurfaceMapper.xml"/>
     </mappers>
 </configuration>

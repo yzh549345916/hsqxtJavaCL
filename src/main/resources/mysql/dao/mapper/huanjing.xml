@@ -20,7 +20,7 @@
     </resultMap>
     <!-- 查询sql -->
     <select id="GetStationsByType" resultType="yzh.数值预报处理.环境气象.站点信息">
-        SELECT * FROM Stations WHERE Type = #{Type}
+        SELECT * FROM Stations WHERE Type = #{Type} order by ID asc
     </select>
     <select id="GetECHeightByDatetime" resultType="yzh.数值预报处理.环境气象.EC高空Model">
         SELECT * FROM ECHeigh WHERE Datetime = #{mydatetime}
@@ -63,4 +63,33 @@
         on duplicate key update
         ${Type}=values(${Type})
     </insert>
+    <insert id="insert_qtShaChen"  parameterType="java.util.List">
+        insert into qtShaChen
+        ( stationID, Datetime, validTime, fcstLevel,fcstName,fcstValue)
+        values
+        <foreach collection="dataList" item="item" index="index" separator=",">
+            (
+            #{item.stationID},
+            #{item.Datetime},
+            #{item.validTime},
+            #{item.fcstLevel},
+            #{item.fcstName},
+            #{item.fcstValue}
+            )
+        </foreach>
+        on duplicate key update
+        fcstValue=values(fcstValue)
+    </insert>
+    <select id="GetqtShaChenSurfaceByStationIDDatetimeValidTimeFcstName" resultType="yzh.数值预报处理.环境气象.区台沙尘Model">
+        SELECT * FROM qtShaChen WHERE stationID = #{stationID} AND Datetime = #{Datetime} AND validTime = #{validTime} AND fcstName = #{fcstName} AND fcstLevel>990 ORDER BY `fcstLevel` DESC LIMIT 1
+    </select>
+    <select id="GetqtShaChenSurfaceByDatetimeValidTimeFcstName" resultType="yzh.数值预报处理.环境气象.区台沙尘Model">
+        SELECT * FROM qtShaChen WHERE Datetime = #{Datetime} AND validTime = #{validTime} AND fcstName = #{fcstName} AND fcstLevel>990
+    </select>
+    <select id="GetqtShaChenSurfaceByStationIDDatetimeFcstName" resultType="yzh.数值预报处理.环境气象.区台沙尘Model">
+        SELECT * FROM qtShaChen WHERE stationID = #{stationID} AND Datetime = #{Datetime} AND fcstName = #{fcstName} AND fcstLevel>990
+    </select>
+    <select id="GetqtShaChenHeightByStationIDDatetimeValidTimeFcstName" resultType="yzh.数值预报处理.环境气象.区台沙尘Model">
+        SELECT * FROM qtShaChen WHERE stationID = #{stationID} AND Datetime = #{Datetime} AND validTime = #{validTime} AND fcstName = #{fcstName}
+    </select>
 </mapper>

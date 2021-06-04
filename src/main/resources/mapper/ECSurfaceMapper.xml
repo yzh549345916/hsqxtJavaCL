@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="yzh.dao.ECSurfaceMapper">
+  <resultMap id="BaseResultMap" type="yzh.model.ECSurface">
+    <!--@mbg.generated-->
+    <!--@Table huanjingqixiang.ECSurface-->
+    <id column="stationID" property="stationid" />
+    <id column="Datetime" property="datetime" />
+    <id column="validTime" property="validtime" />
+    <id column="fcstLevel" property="fcstlevel" />
+    <result column="Tmax" property="tmax" />
+    <result column="Tmin" property="tmin" />
+    <result column="Rain" property="rain" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    stationID, `Datetime`, validTime, fcstLevel, Tmax, Tmin, Rain
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="map" resultMap="BaseResultMap">
+    <!--@mbg.generated-->
+    select 
+    <include refid="Base_Column_List" />
+    from huanjingqixiang.ECSurface
+    where stationID = #{stationid}
+      and `Datetime` = #{datetime}
+      and validTime = #{validtime}
+      and fcstLevel = #{fcstlevel}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="map">
+    <!--@mbg.generated-->
+    delete from huanjingqixiang.ECSurface
+    where stationID = #{stationid}
+      and `Datetime` = #{datetime}
+      and validTime = #{validtime}
+      and fcstLevel = #{fcstlevel}
+  </delete>
+  <insert id="insert" parameterType="yzh.model.ECSurface">
+    <!--@mbg.generated-->
+    insert into huanjingqixiang.ECSurface (stationID, `Datetime`, validTime, fcstLevel, Tmax, Tmin, 
+      Rain)
+    values (#{stationid}, #{datetime}, #{validtime}, #{fcstlevel}, #{tmax}, #{tmin}, 
+      #{rain})
+  </insert>
+  <insert id="insertSelective" parameterType="yzh.model.ECSurface">
+    <!--@mbg.generated-->
+    insert into huanjingqixiang.ECSurface
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="stationid != null">
+        stationID,
+      </if>
+      <if test="datetime != null">
+        `Datetime`,
+      </if>
+      <if test="validtime != null">
+        validTime,
+      </if>
+      <if test="fcstlevel != null">
+        fcstLevel,
+      </if>
+      <if test="tmax != null">
+        Tmax,
+      </if>
+      <if test="tmin != null">
+        Tmin,
+      </if>
+      <if test="rain != null">
+        Rain,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="stationid != null">
+        #{stationid},
+      </if>
+      <if test="datetime != null">
+        #{datetime},
+      </if>
+      <if test="validtime != null">
+        #{validtime},
+      </if>
+      <if test="fcstlevel != null">
+        #{fcstlevel},
+      </if>
+      <if test="tmax != null">
+        #{tmax},
+      </if>
+      <if test="tmin != null">
+        #{tmin},
+      </if>
+      <if test="rain != null">
+        #{rain},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="yzh.model.ECSurface">
+    <!--@mbg.generated-->
+    update huanjingqixiang.ECSurface
+    <set>
+      <if test="tmax != null">
+        Tmax = #{tmax},
+      </if>
+      <if test="tmin != null">
+        Tmin = #{tmin},
+      </if>
+      <if test="rain != null">
+        Rain = #{rain},
+      </if>
+    </set>
+    where stationID = #{stationid}
+      and `Datetime` = #{datetime}
+      and validTime = #{validtime}
+      and fcstLevel = #{fcstlevel}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="yzh.model.ECSurface">
+    <!--@mbg.generated-->
+    update huanjingqixiang.ECSurface
+    set Tmax = #{tmax},
+      Tmin = #{tmin},
+      Rain = #{rain}
+    where stationID = #{stationid}
+      and `Datetime` = #{datetime}
+      and validTime = #{validtime}
+      and fcstLevel = #{fcstlevel}
+  </update>
+
+  <select id="countByDatetimeAndTmaxIsNotNull" resultType="java.lang.Integer">
+    select count(1)
+    from huanjingqixiang.ECSurface
+    where `Datetime`=#{datetime} and Tmax is not null
+  </select>
+  <select id="GetStationsByType" resultType="yzh.数值预报处理.环境气象.站点信息">
+    SELECT * FROM Stations WHERE Type = #{Type} order by ID asc
+  </select>
+  <select id="countByDatetimeAndTminIsNotNull" resultType="java.lang.Integer">
+    select count(1)
+    from huanjingqixiang.ECSurface
+    where `Datetime`=#{datetime} and Tmin is not null
+  </select>
+
+  <select id="countByDatetimeAndRainIsNotNull" resultType="java.lang.Integer">
+    select count(1)
+    from huanjingqixiang.ECSurface
+    where `Datetime`=#{datetime} and Rain is not null
+  </select>
+  <insert id="insert_ECSurface"  parameterType="java.util.List">
+    insert into ECSurface
+    ( stationID, Datetime, validTime, fcstLevel,${Type})
+    values
+    <foreach collection="dataList" item="item" index="index" separator=",">
+      (
+      #{item.stationID},
+      #{item.Datetime},
+      #{item.validTime},
+      #{item.level},
+      #{item.ysValue}
+      )
+    </foreach>
+    on duplicate key update
+    ${Type}=values(${Type})
+  </insert>
+
+<!--auto generated by MybatisCodeHelper on 2021-05-31-->
+  <delete id="deleteByDatetimeBefore">
+    delete from huanjingqixiang.ECSurface
+    where `Datetime` <![CDATA[<]]> #{maxDatetime}
+  </delete>
+
+<!--auto generated by MybatisCodeHelper on 2021-06-03-->
+  <select id="findAllByDatetimeAndValidtimeGreaterThanAndValidtimeLessThanOrEqualTo" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List"/>
+    from huanjingqixiang.ECSurface
+    where `Datetime`=#{datetime} and validTime <![CDATA[>]]> #{minValidtime} and validTime <![CDATA[<=]]>
+    #{maxValidtime}
+  </select>
+
+
+<!--auto generated by MybatisCodeHelper on 2021-06-03-->
+  <select id="findAllByDatetimeAndValidtimeInOrderByValidtime" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List"/>
+    from huanjingqixiang.ECSurface
+    where `Datetime`=#{datetime} and validTime in
+    <foreach item="item" index="index" collection="validtimeCollection"
+             open="(" separator="," close=")">
+      #{item}
+    </foreach>
+    order by validTime asc
+  </select>
+</mapper>

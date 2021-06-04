@@ -48,14 +48,14 @@ public class 沙尘模式下载 {
                                double jd=0;
                                @Override
                                public void start() {
-                                   Console.log("{}  开始下载  {}",new Date(),file_nameILE_NAME);
+                                   Console.log("{}  开始下载  {}",DateUtil.formatDateTime(new Date()),file_nameILE_NAME);
                                }
 
                                @Override
                                public void progress(long progressSize) {
                                    double jdls=(progressSize/(double)filesize)*100;
                                    if(jdls-jd>3){
-                                       Console.log("{}  {}已下载：{}  {}%", new Date(),file_nameILE_NAME,FileUtil.readableFileSize(progressSize), NumberUtil.round(jdls,1));
+                                       Console.log("{}  {}已下载：{}  {}%", DateUtil.formatDateTime(new Date()),file_nameILE_NAME,FileUtil.readableFileSize(progressSize), NumberUtil.round(jdls,1));
                                        jd=jdls;
                                    }
 
@@ -63,16 +63,16 @@ public class 沙尘模式下载 {
 
                                @Override
                                public void finish() {
-                                   Console.log("{}下载完成  {}",new Date(),file_nameILE_NAME);
+                                   Console.log("{}下载完成  {}",DateUtil.formatDateTime(new Date()),file_nameILE_NAME);
 
                                }
                            });
                            if(FileUtil.exist(myName)){
                                //String pathLS= FileUtil.file(comMyName).getPath();
                                if(nc处理.compressCUACE(myName,comMyName)){
-                                   Console.log("{} {}压缩成功",new Date(),file_nameILE_NAME);
+                                   Console.log("{} {}压缩成功",DateUtil.formatDateTime(new Date()),file_nameILE_NAME);
                                }else{
-                                   Console.log("{} {}压缩失败",new Date(),file_nameILE_NAME);
+                                   Console.log("{} {}压缩失败",DateUtil.formatDateTime(new Date()),file_nameILE_NAME);
                                }
                            }
 
