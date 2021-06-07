@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="yzh.dao.CuaceSurfaceMapper">
+  <resultMap id="BaseResultMap" type="yzh.model.CuaceSurface">
+    <!--@mbg.generated-->
+    <!--@Table cuaceSurface-->
+    <id column="stationID" jdbcType="VARCHAR" property="stationid" />
+    <id column="Datetime" jdbcType="TIMESTAMP" property="datetime" />
+    <id column="validTime" jdbcType="INTEGER" property="validtime" />
+    <result column="AOD550_DUST" jdbcType="DOUBLE" property="aod550Dust" />
+    <result column="DDEPO_DUST" jdbcType="DOUBLE" property="ddepoDust" />
+    <result column="DFLUX_DUST" jdbcType="DOUBLE" property="dfluxDust" />
+    <result column="LOAD_DUST" jdbcType="DOUBLE" property="loadDust" />
+    <result column="SCONC_DUST" jdbcType="DOUBLE" property="sconcDust" />
+    <result column="U10" jdbcType="DOUBLE" property="u10" />
+    <result column="V10" jdbcType="DOUBLE" property="v10" />
+    <result column="WDEPO_DUST" jdbcType="DOUBLE" property="wdepoDust" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--@mbg.generated-->
+    stationID, `Datetime`, validTime, AOD550_DUST, DDEPO_DUST, DFLUX_DUST, LOAD_DUST, 
+    SCONC_DUST, U10, V10, WDEPO_DUST
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="map" resultMap="BaseResultMap">
+    <!--@mbg.generated-->
+    select 
+    <include refid="Base_Column_List" />
+    from cuaceSurface
+    where stationID = #{stationid,jdbcType=VARCHAR}
+      and `Datetime` = #{datetime,jdbcType=TIMESTAMP}
+      and validTime = #{validtime,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="map">
+    <!--@mbg.generated-->
+    delete from cuaceSurface
+    where stationID = #{stationid,jdbcType=VARCHAR}
+      and `Datetime` = #{datetime,jdbcType=TIMESTAMP}
+      and validTime = #{validtime,jdbcType=INTEGER}
+  </delete>
+  <insert id="insert" parameterType="yzh.model.CuaceSurface">
+    <!--@mbg.generated-->
+    insert into cuaceSurface (stationID, `Datetime`, validTime, 
+      AOD550_DUST, DDEPO_DUST, DFLUX_DUST, 
+      LOAD_DUST, SCONC_DUST, U10, 
+      V10, WDEPO_DUST)
+    values (#{stationid,jdbcType=VARCHAR}, #{datetime,jdbcType=TIMESTAMP}, #{validtime,jdbcType=INTEGER}, 
+      #{aod550Dust,jdbcType=DOUBLE}, #{ddepoDust,jdbcType=DOUBLE}, #{dfluxDust,jdbcType=DOUBLE}, 
+      #{loadDust,jdbcType=DOUBLE}, #{sconcDust,jdbcType=DOUBLE}, #{u10,jdbcType=DOUBLE}, 
+      #{v10,jdbcType=DOUBLE}, #{wdepoDust,jdbcType=DOUBLE})
+  </insert>
+  <insert id="insertSelective" parameterType="yzh.model.CuaceSurface">
+    <!--@mbg.generated-->
+    insert into cuaceSurface
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="stationid != null">
+        stationID,
+      </if>
+      <if test="datetime != null">
+        `Datetime`,
+      </if>
+      <if test="validtime != null">
+        validTime,
+      </if>
+      <if test="aod550Dust != null">
+        AOD550_DUST,
+      </if>
+      <if test="ddepoDust != null">
+        DDEPO_DUST,
+      </if>
+      <if test="dfluxDust != null">
+        DFLUX_DUST,
+      </if>
+      <if test="loadDust != null">
+        LOAD_DUST,
+      </if>
+      <if test="sconcDust != null">
+        SCONC_DUST,
+      </if>
+      <if test="u10 != null">
+        U10,
+      </if>
+      <if test="v10 != null">
+        V10,
+      </if>
+      <if test="wdepoDust != null">
+        WDEPO_DUST,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="stationid != null">
+        #{stationid,jdbcType=VARCHAR},
+      </if>
+      <if test="datetime != null">
+        #{datetime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="validtime != null">
+        #{validtime,jdbcType=INTEGER},
+      </if>
+      <if test="aod550Dust != null">
+        #{aod550Dust,jdbcType=DOUBLE},
+      </if>
+      <if test="ddepoDust != null">
+        #{ddepoDust,jdbcType=DOUBLE},
+      </if>
+      <if test="dfluxDust != null">
+        #{dfluxDust,jdbcType=DOUBLE},
+      </if>
+      <if test="loadDust != null">
+        #{loadDust,jdbcType=DOUBLE},
+      </if>
+      <if test="sconcDust != null">
+        #{sconcDust,jdbcType=DOUBLE},
+      </if>
+      <if test="u10 != null">
+        #{u10,jdbcType=DOUBLE},
+      </if>
+      <if test="v10 != null">
+        #{v10,jdbcType=DOUBLE},
+      </if>
+      <if test="wdepoDust != null">
+        #{wdepoDust,jdbcType=DOUBLE},
+      </if>
+    </trim>
+  </insert>
+  <select id="GetStationsByType" resultType="yzh.数值预报处理.环境气象.站点信息">
+    SELECT * FROM Stations WHERE Type = #{Type} order by ID asc
+  </select>
+  <update id="updateByPrimaryKeySelective" parameterType="yzh.model.CuaceSurface">
+    <!--@mbg.generated-->
+    update cuaceSurface
+    <set>
+      <if test="aod550Dust != null">
+        AOD550_DUST = #{aod550Dust,jdbcType=DOUBLE},
+      </if>
+      <if test="ddepoDust != null">
+        DDEPO_DUST = #{ddepoDust,jdbcType=DOUBLE},
+      </if>
+      <if test="dfluxDust != null">
+        DFLUX_DUST = #{dfluxDust,jdbcType=DOUBLE},
+      </if>
+      <if test="loadDust != null">
+        LOAD_DUST = #{loadDust,jdbcType=DOUBLE},
+      </if>
+      <if test="sconcDust != null">
+        SCONC_DUST = #{sconcDust,jdbcType=DOUBLE},
+      </if>
+      <if test="u10 != null">
+        U10 = #{u10,jdbcType=DOUBLE},
+      </if>
+      <if test="v10 != null">
+        V10 = #{v10,jdbcType=DOUBLE},
+      </if>
+      <if test="wdepoDust != null">
+        WDEPO_DUST = #{wdepoDust,jdbcType=DOUBLE},
+      </if>
+    </set>
+    where stationID = #{stationid,jdbcType=VARCHAR}
+      and `Datetime` = #{datetime,jdbcType=TIMESTAMP}
+      and validTime = #{validtime,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="yzh.model.CuaceSurface">
+    <!--@mbg.generated-->
+    update cuaceSurface
+    set AOD550_DUST = #{aod550Dust,jdbcType=DOUBLE},
+      DDEPO_DUST = #{ddepoDust,jdbcType=DOUBLE},
+      DFLUX_DUST = #{dfluxDust,jdbcType=DOUBLE},
+      LOAD_DUST = #{loadDust,jdbcType=DOUBLE},
+      SCONC_DUST = #{sconcDust,jdbcType=DOUBLE},
+      U10 = #{u10,jdbcType=DOUBLE},
+      V10 = #{v10,jdbcType=DOUBLE},
+      WDEPO_DUST = #{wdepoDust,jdbcType=DOUBLE}
+    where stationID = #{stationid,jdbcType=VARCHAR}
+      and `Datetime` = #{datetime,jdbcType=TIMESTAMP}
+      and validTime = #{validtime,jdbcType=INTEGER}
+  </update>
+  <insert id="insert_CuaceSurface"  parameterType="java.util.List">
+    insert into cuaceSurface
+    ( stationID, Datetime, validTime,${Type})
+    values
+    <foreach collection="dataList" item="item" index="index" separator=",">
+      (
+      #{item.stationID},
+      #{item.Datetime},
+      #{item.validTime},
+      #{item.ysValue}
+      )
+    </foreach>
+    on duplicate key update
+    ${Type}=values(${Type})
+  </insert>
+
+  <insert id="insert_CuaceHeigh"  parameterType="java.util.List">
+    insert into cuaceHeigh
+    ( stationID, Datetime, validTime, fcstLevel,${Type})
+    values
+    <foreach collection="dataList" item="item" index="index" separator=",">
+      (
+      #{item.stationID},
+      #{item.Datetime},
+      #{item.validTime},
+      #{item.level},
+      #{item.ysValue}
+      )
+    </foreach>
+    on duplicate key update
+    ${Type}=values(${Type})
+  </insert>
+</mapper>

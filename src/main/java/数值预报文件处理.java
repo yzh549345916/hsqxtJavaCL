@@ -6,6 +6,7 @@ import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.extra.ftp.Ftp;
+import cn.hutool.extra.ftp.FtpMode;
 import cn.hutool.extra.ssh.Sftp;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -22,6 +23,7 @@ public class 数值预报文件处理 {
     @Test
     public void cs(){
         //沙尘模式删除历史数据();
+        rmaps同步();
         DateTime myDate = new DateTime("2021-05-12 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
         沙尘模式同步(myDate);
     }
@@ -53,10 +55,10 @@ public class 数值预报文件处理 {
         try {
             Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8);
             ftp.setBackToPwd(false);
+            ftp.setMode(FtpMode.Passive);
             SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
             String format1 = df.format(new Date());
             ftp.cd("zdyb_szyb/grid/method");
-
             String myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "\\区台数值预报文件\\格点数据\\" + format1 + "\\";
             if (ftp.exist(format1)) {
                 if (!FileUtil.exist(myDirName)) {
@@ -86,10 +88,10 @@ public class 数值预报文件处理 {
         try {
             Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8);
             ftp.setBackToPwd(false);
+            ftp.setMode(FtpMode.Passive);
             SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
             String format1 = df.format(new Date());
             ftp.cd("zdyb_szyb/grid/rmaps");
-
             String myDirName = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "\\区台数值预报文件\\rmaps数据\\" + format1 + "\\";
             if (ftp.exist(format1)) {
                 if (!FileUtil.exist(myDirName)) {
@@ -226,6 +228,7 @@ public class 数值预报文件处理 {
         try {
             Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8);
             ftp.setBackToPwd(true);
+            ftp.setMode(FtpMode.Passive);
             SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
             String format1 = df.format(new Date());
             ftp.cd("zdyb_szyb/site");

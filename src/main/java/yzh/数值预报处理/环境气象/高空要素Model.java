@@ -20,7 +20,13 @@ public class 高空要素Model {
         this.stationID = stationID;
         Datetime = datetime;
     }
-
+    public 高空要素Model(Integer validTime, Double ysValue, String stationID, Date datetime) {
+        this.validTime = validTime;
+        this.level = level;
+        this.ysValue = ysValue;
+        this.stationID = stationID;
+        Datetime = datetime;
+    }
     public void setDatetime(Date datetime) {
         Datetime = datetime;
     }

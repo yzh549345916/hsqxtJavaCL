@@ -93,18 +93,19 @@ public class nc处理meteo {
         paramChineseName = "地面沙尘浓度";
         myFileNameBase = myDirNameBase + paramType + "/";
         stationFileNameBase = myDirNameBaseStation + paramType + "/";
-        地面沙尘浓度json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, paramType, paramChineseName, myFileNameBase, "ug/m3", stationData, stations, stationFileNameBase);
+        地面沙尘浓度json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, paramType, paramChineseName, myFileNameBase, "ug/m3", stationData, stations, stationFileNameBase,ecDao);
         /*variableStrs=new String[]{"PM10"};
         paramType="PM10";paramChineseName="PM10";
         myFileNameBase=myDirNameBase+paramType+"/";
         高空沙尘json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, variableStrs, paramType, paramChineseName, myFileNameBase,false,"");*/
         myFileNameBase = myDirNameBase + "PM10/";
         stationFileNameBase = myDirNameBaseStation + "PM10/";
-        PM10json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, myFileNameBase, stationData, stations, stationFileNameBase);
+        PM10json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, myFileNameBase, stationData, stations, stationFileNameBase,ecDao);
         myFileNameBase = myDirNameBase + "PM2.5/";
         stationFileNameBase = myDirNameBaseStation + "PM2.5/";
-        PM25json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, myFileNameBase, stationData, stations, stationFileNameBase);
-        同步沙尘模式数据(format1);
+        PM25json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, myFileNameBase, stationData, stations, stationFileNameBase,ecDao);
+       //暂时不用上传沙尘模式数据到20服务器，因此注释掉
+        //同步沙尘模式数据(format1);
         /* variableStrs=new String[]{"PM2_5_DRY"};
         paramType="PM2.5";paramChineseName="PM2.5";
         myFileNameBase=myDirNameBase+paramType+"/";
@@ -174,16 +175,17 @@ public class nc处理meteo {
         }
         String myStationFileName = StrUtil.format("{}shachen_station_{}_{}.json", stationFileNameBase, paramType, format2);
         File myStationFile = FileUtil.touch(myStationFileName);
-
         FileUtil.writeUtf8String(jsonArray.toString(), myStationFile);
     }
 
-    private static void 地面沙尘浓度json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String paramType, String paramChineseName, String myFileNameBase, String defaultUnits, StationData stationData, List<站点信息> stations, String stationFileNameBase) {
+    private static void 地面沙尘浓度json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String paramType, String paramChineseName, String myFileNameBase, String defaultUnits, StationData stationData, List<站点信息> stations, String stationFileNameBase,huanbao ecDao) {
         String[] variableStrs = new String[]{"DUST_1", "DUST_2", "DUST_3", "DUST_4", "DUST_5"};
         JSONArray jsonArray = new JSONArray();
+        List<区台沙尘Model> stationDataList=new ArrayList<>();
         for (int i = 0; i < tDimension.size(); i++) {
             aDataInfo.setTimeIndex(i);
             aDataInfo.setVariableName(variableStrs[0]);
+            Date forecastDate = Date.from(tDimension.get(i).plusHours(8).toInstant(ZoneOffset.of("+8")));
             GridData myGridData = aDataInfo.getGridData();
             for (int j = 1; j < variableStrs.length; j++) {
                 aDataInfo.setVariableName(variableStrs[j]);
@@ -226,15 +228,20 @@ public class nc处理meteo {
                         .set("stationLon", mySta.getLon())
                         .set("value", myStationData.getValue(k));
                 jsonArray.add(jsonStation);
+                stationDataList.add(new 区台沙尘Model(mySta.getID(),myDate,(int)DateUtil.between(myDate,forecastDate, DateUnit.HOUR),paramType, 1000.0,myStationData.getValue(k)));
             }
         }
         String myStationFileName = StrUtil.format("{}shachen_station_{}_{}.json", stationFileNameBase, paramType, format2);
         File myStationFile = FileUtil.touch(myStationFileName);
         FileUtil.writeUtf8String(jsonArray.toString(), myStationFile);
+        if(stationDataList.size()>0){
+            ecDao.insert_qtShaChen(stationDataList);
+        }
     }
 
-    private static void PM10json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String myFileNameBase, StationData stationData, List<站点信息> stations, String stationFileNameBase) {
+    private static void PM10json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String myFileNameBase, StationData stationData, List<站点信息> stations, String stationFileNameBase,huanbao ecDao) {
         String[] variableStrs = new String[]{"DUST_1", "DUST_2", "DUST_3", "DUST_4"};
+        List<区台沙尘Model> stationDataList=new ArrayList<>();
         JSONArray jsonArray = new JSONArray();
         Dimension zDimension = aDataInfo.getDataInfo().getZDimension();
         for (int l = 0; l < zDimension.getLength(); l++) {
@@ -242,6 +249,7 @@ public class nc处理meteo {
             String myFileNameBaseLeve = myFileNameBase + heightStr + "/";
             aDataInfo.setLevelIndex(l);
             for (int i = 0; i < tDimension.size(); i++) {
+                Date forecastDate = Date.from(tDimension.get(i).plusHours(8).toInstant(ZoneOffset.of("+8")));
                 aDataInfo.setTimeIndex(i);
                 aDataInfo.setVariableName(variableStrs[0]);
                 GridData myGridData = aDataInfo.getGridData();
@@ -292,23 +300,29 @@ public class nc处理meteo {
                             .set("stationLon", mySta.getLon())
                             .set("value", myStationData.getValue(k));
                     jsonArray.add(jsonStation);
+                    stationDataList.add(new 区台沙尘Model(mySta.getID(),myDate,(int)DateUtil.between(myDate,forecastDate, DateUnit.HOUR),"PM10",  NumberUtil.round(zDimension.getDimValue(l) * 1000, 2).doubleValue(),myStationData.getValue(k)));
                 }
             }
         }
         String myStationFileName = StrUtil.format("{}shachen_station_{}_{}.json", stationFileNameBase, "PM10", format2);
         File myStationFile = FileUtil.touch(myStationFileName);
         FileUtil.writeUtf8String(jsonArray.toString(), myStationFile);
+        if(stationDataList.size()>0){
+            ecDao.insert_qtShaChen(stationDataList);
+        }
     }
 
-    private static void PM25json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String myFileNameBase, StationData stationData, List<站点信息> stations, String stationFileNameBase) {
+    private static void PM25json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String myFileNameBase, StationData stationData, List<站点信息> stations, String stationFileNameBase,huanbao ecDao) {
         Dimension zDimension = aDataInfo.getDataInfo().getZDimension();
         JSONArray jsonArray = new JSONArray();
+        List<区台沙尘Model> stationDataList=new ArrayList<>();
         for (int l = 0; l < zDimension.getLength(); l++) {
             String heightStr = NumberUtil.round(zDimension.getDimValue(l) * 1000, 2).toString();
             String myFileNameBaseLeve = myFileNameBase + heightStr + "/";
             aDataInfo.setLevelIndex(l);
             for (int i = 0; i < tDimension.size(); i++) {
                 aDataInfo.setTimeIndex(i);
+                Date forecastDate = Date.from(tDimension.get(i).plusHours(8).toInstant(ZoneOffset.of("+8")));
                 GridData myGridData = aDataInfo.getGridData("DUST_1").add(aDataInfo.getGridData("DUST_2").mul(0.3125));
                 myGridData = myGridData.div(aDataInfo.getGridData("ALT"));
                 double[] a1 = (double[]) myGridData.getArray().copyTo1DJavaArray();
@@ -349,13 +363,16 @@ public class nc处理meteo {
                             .set("stationLon", mySta.getLon())
                             .set("value", myStationData.getValue(k));
                     jsonArray.add(jsonStation);
+                    stationDataList.add(new 区台沙尘Model(mySta.getID(),myDate,(int)DateUtil.between(myDate,forecastDate, DateUnit.HOUR),"PM2.5",  NumberUtil.round(zDimension.getDimValue(l) * 1000, 2).doubleValue(),myStationData.getValue(k)));
                 }
             }
         }
         String myStationFileName = StrUtil.format("{}shachen_station_{}_{}.json", stationFileNameBase, "PM2.5", format2);
         File myStationFile = FileUtil.touch(myStationFileName);
         FileUtil.writeUtf8String(jsonArray.toString(), myStationFile);
-
+        if(stationDataList.size()>0){
+            ecDao.insert_qtShaChen(stationDataList);
+        }
     }
 
     private static void 高空沙尘json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String[] variableStrs, String paramType, String paramChineseName, String myFileNameBase, boolean absBS, String defaultUnits) {
@@ -426,7 +443,6 @@ public class nc处理meteo {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        //sftp.put("E:\\cx\\C#\\20201121乡镇精细化预报\\更改说明.txt",".");
     }
 
     public static void 递归上传文件夹(Sftp sftp,String sPath,String dPath){

@@ -1,15 +1,17 @@
 package yzh.数值预报处理;
 
-import cn.hutool.core.date.DateTime;
-import cn.hutool.core.date.DateUnit;
-import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.date.*;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.core.util.CharsetUtil;
+import cn.hutool.core.util.NumberUtil;
 import cn.hutool.extra.ftp.Ftp;
+import cn.hutool.extra.ftp.FtpMode;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import org.apache.commons.net.ftp.FTPFile;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.Test;
 import org.meteoinfo.data.meteodata.grads.GrADSDataInfo;
 import ucar.nc2.Dimension;
@@ -18,7 +20,13 @@ import ucar.nc2.NetcdfFiles;
 import ucar.nc2.Variable;
 import ucar.nc2.write.NetcdfCopier;
 import ucar.nc2.write.NetcdfFormatWriter;
+import yzh.dao.CuaceSurfaceMapper;
+import yzh.dao.ECSurfaceMapper;
+import yzh.util.SqlSessionFactoryUtil;
 import yzh.数值预报处理.环境气象.jjjMOdel;
+import yzh.数值预报处理.环境气象.站点信息;
+import yzh.数值预报处理.环境气象.高空要素Model;
+import yzh.环境气象.沙尘模式下载;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,10 +34,10 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static cn.hutool.core.util.NumberUtil.round;
+
 
 public class nc处理 {
-
-
     public static void CUACE数据处理(DateTime myDate) {
         DateTime myDateUtc = DateUtil.offsetHour(myDate, -8);
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
@@ -55,6 +63,14 @@ public class nc处理 {
                     xCountE = (int) Math.round((140 - netCDFDataInfo.xDim.getDimValue(0)) / netCDFDataInfo.xDim.getStep());
                     yCountS = (int) Math.round((40 - netCDFDataInfo.yDim.getDimValue(0)) / netCDFDataInfo.yDim.getStep());
                     yCountE = (int) Math.round((60 - netCDFDataInfo.yDim.getDimValue(0)) / netCDFDataInfo.yDim.getStep());
+                    SqlSessionFactory sqlSessionFactoryHuanbao = SqlSessionFactoryUtil.getSqlSessionFactoryHuanbao();
+                    SqlSession sessionHuanbao = sqlSessionFactoryHuanbao.openSession(true);
+                    CuaceSurfaceMapper cuaceSurfaceMapperDao = sessionHuanbao.getMapper(CuaceSurfaceMapper.class);
+                    List<站点信息> stations = cuaceSurfaceMapperDao.GetStationsByType("shachen");
+                    for(var sta:stations){
+                        int[] rowsz = 根据经纬度获取数据行数(40,  netCDFDataInfo.yDim.getStep(), 60,  netCDFDataInfo.xDim.getStep(), sta.getLat(), sta.getLon());
+                        sta.setStation_levl(rowsz[0] * (xCountE - xCountS + 1) + rowsz[1]);
+                    }
                     for (Variable var1 : netCDFDataInfo.ncVariables
                     ) {
                         if (var1.getRank() == 3) {
@@ -109,6 +125,15 @@ public class nc处理 {
                                                 .putOnce("data", data);
                                         File myFile = FileUtil.touch(myFileName);
                                         FileUtil.writeUtf8String("["+JSONUtil.toJsonStr(json1)+"]", myFile);
+                                        List<高空要素Model> dataLists=new ArrayList<>();
+                                        for(var sta:stations){
+                                            dataLists.add(new 高空要素Model((int) DateUtil.between(myDates.get(0),myDates.get(i),DateUnit.HOUR),  (double)data[sta.getStation_levl()], sta.getID(), myDate));
+                                        }
+                                        try{
+                                            cuaceSurfaceMapperDao.insert_CuaceSurface(dataLists, myName);
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
                                     }
                                 } catch (ucar.ma2.InvalidRangeException e) {
                                     e.printStackTrace();
@@ -175,10 +200,16 @@ public class nc处理 {
 
                                             File myFile = FileUtil.touch(myFileName);
                                             FileUtil.writeUtf8String("["+JSONUtil.toJsonStr(json1)+"]", myFile);
-                                            json1.size();
+                                            List<高空要素Model> dataLists=new ArrayList<>();
+                                            for(var sta:stations){
+                                                dataLists.add(new 高空要素Model((int) DateUtil.between(myDates.get(0),myDates.get(i),DateUnit.HOUR),(int)Math.round(levels[j]), (double)data[sta.getStation_levl()], sta.getID(), myDate));
+                                            }
+                                            try{
+                                                cuaceSurfaceMapperDao.insert_CuaceHeigh(dataLists, myName);
+                                            } catch (Exception e) {
+                                                e.printStackTrace();
+                                            }
                                         }
-
-
                                     } catch (ucar.ma2.InvalidRangeException e) {
                                         e.printStackTrace();
                                     }
@@ -199,6 +230,12 @@ public class nc处理 {
         }
 
 
+    }
+    public static int[] 根据经纬度获取数据行数(double startLat, double deltaLat, double startLon, double deltaLon, double myLat, double myLon) {
+        int[] myRow = {-1, -1};
+        myRow[0] = (int) Math.round((myLat - startLat) / deltaLat);
+        myRow[1] = (int) Math.round((myLon - startLon) / deltaLon);
+        return myRow;
     }
     public static void 人影数据(){
         String path="D:\\新建文件夹\\1\\";
@@ -711,22 +748,23 @@ public class nc处理 {
         //人影数据();
         //人影数据处理("D:\\新建文件夹\\1\\1981-01-12.nc");
         //删除30天前的格点的数据();
-        //cuace格点数据是否存在(myDate);
+        //
         //readNCfile(myDate);
         //System.out.println(compressCUACE("E:\\1.nc","E:\\123.nc"));
         //DateTime myDate = new DateTime("2021-04-23 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
         //京津冀(myDate);
         try {
-            DateTime myDate=DateUtil.offsetHour(DateUtil.beginOfDay(DateUtil.date()), 20);
-            nc处理.京津冀(myDate);
-            myDate= DateUtil.offsetDay(myDate,-1);
-            nc处理.京津冀(myDate);
+            DateTime myDate = new DateTime("2021-06-04 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
+            if(!nc处理.cuace格点数据是否存在(myDate)){
+                nc处理.CUACE数据处理(myDate);
+                System.out.println(DateUtil.date()+"处理"+myDate+"的CUACE格点数据");
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        org.meteoinfo.data.meteodata.grads.GrADSDataInfo grADSDataInfo=new GrADSDataInfo();
+       /* org.meteoinfo.data.meteodata.grads.GrADSDataInfo grADSDataInfo=new GrADSDataInfo();
         grADSDataInfo.readDataInfo("F:\\EMI\\cuace_loading_index.ctl");
-       var s2=grADSDataInfo;
+       var s2=grADSDataInfo;*/
     }
 
     public static  void 京津冀(Date date){
@@ -745,6 +783,7 @@ public class nc处理 {
                String resourPath = FileUtil.getParent(new ClassPathResource("config").getAbsolutePath(), 2) + "/区台数值预报文件/szyb/huanbao/jjj/"+ format1 + "/";
                Ftp ftp = new Ftp("172.18.142.20", 21, "qxt", "qxt4348050", CharsetUtil.CHARSET_UTF_8);
                ftp.setBackToPwd(true);
+               ftp.setMode(FtpMode.Passive);
                List<FTPFile> ftpFiles=ftp.lsFiles("", ftpFile -> ftpFile.getName().contains(format3)&&ftpFile.getName().endsWith("nc"));
                if(ftpFiles.size()>0){
                    FTPFile myftpFile=ftpFiles.get(0);

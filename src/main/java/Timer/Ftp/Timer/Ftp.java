@@ -2,6 +2,7 @@ package Timer.Ftp.Timer;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.CharsetUtil;
+import cn.hutool.extra.ftp.FtpMode;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -12,6 +13,7 @@ public class Ftp implements Runnable{
     public void run() {
         cn.hutool.extra.ftp.Ftp ftp = new cn.hutool.extra.ftp.Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8);
         ftp.setBackToPwd(false);
+        ftp.setMode(FtpMode.Passive);
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");//设置日期格式
         String format1 = df.format(new Date());
         ftp.cd("zdyb_szyb");
