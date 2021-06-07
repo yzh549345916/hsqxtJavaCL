@@ -171,7 +171,7 @@ public class nc处理meteo {
             }
         }
         if(stationDataList.size()>0){
-            ecDao.insert_qtShaChen(stationDataList);
+            ecDao.insert_qtShaChen( DateUtil.format(myDate, "yyyyMM"),stationDataList);
         }
         String myStationFileName = StrUtil.format("{}shachen_station_{}_{}.json", stationFileNameBase, paramType, format2);
         File myStationFile = FileUtil.touch(myStationFileName);
@@ -235,7 +235,7 @@ public class nc处理meteo {
         File myStationFile = FileUtil.touch(myStationFileName);
         FileUtil.writeUtf8String(jsonArray.toString(), myStationFile);
         if(stationDataList.size()>0){
-            ecDao.insert_qtShaChen(stationDataList);
+            ecDao.insert_qtShaChen( DateUtil.format(myDate, "yyyyMM"),stationDataList);
         }
     }
 
@@ -303,13 +303,19 @@ public class nc处理meteo {
                     stationDataList.add(new 区台沙尘Model(mySta.getID(),myDate,(int)DateUtil.between(myDate,forecastDate, DateUnit.HOUR),"PM10",  NumberUtil.round(zDimension.getDimValue(l) * 1000, 2).doubleValue(),myStationData.getValue(k)));
                 }
             }
+            if(stationDataList.size()>0){
+                try{
+                    ecDao.insert_qtShaChen( DateUtil.format(myDate, "yyyyMM"),stationDataList);
+                    stationDataList.clear();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
         String myStationFileName = StrUtil.format("{}shachen_station_{}_{}.json", stationFileNameBase, "PM10", format2);
         File myStationFile = FileUtil.touch(myStationFileName);
         FileUtil.writeUtf8String(jsonArray.toString(), myStationFile);
-        if(stationDataList.size()>0){
-            ecDao.insert_qtShaChen(stationDataList);
-        }
+
     }
 
     private static void PM25json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String myFileNameBase, StationData stationData, List<站点信息> stations, String stationFileNameBase,huanbao ecDao) {
@@ -366,13 +372,18 @@ public class nc处理meteo {
                     stationDataList.add(new 区台沙尘Model(mySta.getID(),myDate,(int)DateUtil.between(myDate,forecastDate, DateUnit.HOUR),"PM2.5",  NumberUtil.round(zDimension.getDimValue(l) * 1000, 2).doubleValue(),myStationData.getValue(k)));
                 }
             }
+            if(stationDataList.size()>0){
+                try{
+                    ecDao.insert_qtShaChen( DateUtil.format(myDate, "yyyyMM"),stationDataList);
+                    stationDataList.clear();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
         String myStationFileName = StrUtil.format("{}shachen_station_{}_{}.json", stationFileNameBase, "PM2.5", format2);
         File myStationFile = FileUtil.touch(myStationFileName);
         FileUtil.writeUtf8String(jsonArray.toString(), myStationFile);
-        if(stationDataList.size()>0){
-            ecDao.insert_qtShaChen(stationDataList);
-        }
     }
 
     private static void 高空沙尘json转换(Date myDate, String format2, MeteoDataInfo aDataInfo, ProjectionInfo mypro, Dimension yDimension, Dimension xDimension, List<LocalDateTime> tDimension, String[] variableStrs, String paramType, String paramChineseName, String myFileNameBase, boolean absBS, String defaultUnits) {
@@ -468,9 +479,9 @@ public class nc处理meteo {
     }
     @Test
     public void cs() {
-        同步沙尘模式数据("2021-05-12");
-        DateTime myDate = new DateTime("2021-05-12 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
-        String path = "E:\\cx\\java\\呼市气象台java处理\\target\\区台数值预报文件\\szyb\\huanbao\\shachen\\qtshachen_2021-05-12.nc";
+        //同步沙尘模式数据("2021-05-12");
+        DateTime myDate = new DateTime("2021-06-03 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
+        String path = "E:\\cx\\java\\hsqxtJavaCL\\target\\区台数值预报文件\\szyb\\huanbao\\shachen\\qtshachen_2021-06-03.nc";
         区台沙尘模式数据处理(myDate, path);
     }
 }

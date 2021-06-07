@@ -64,7 +64,7 @@
         ${Type}=values(${Type})
     </insert>
     <insert id="insert_qtShaChen"  parameterType="java.util.List">
-        insert into qtShaChen
+        insert into qtShaChen_${tableNameDate}
         ( stationID, Datetime, validTime, fcstLevel,fcstName,fcstValue)
         values
         <foreach collection="dataList" item="item" index="index" separator=",">

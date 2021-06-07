@@ -17,7 +17,7 @@ public interface huanbao {
     List<EC高空Model> GetECHeightByDatetime(@Param("mydatetime") Date mydatetime);
 
     void deleteHistoryEC(@Param("mydatetime") Date mydatetime);
-    Integer insert_qtShaChen(@Param("dataList") List<区台沙尘Model> dataList);
+    Integer insert_qtShaChen(@Param("tableNameDate")String tableNameDate,@Param("dataList") List<区台沙尘Model> dataList);
 
     List<区台沙尘Model> GetqtShaChenSurfaceByStationIDDatetimeValidTimeFcstName(@Param("stationID") String stationID, @Param("Datetime") Date datetime, @Param("validTime") Integer validTime, @Param("fcstName") String fcstName);
 
