@@ -23,8 +23,7 @@ public class 数值预报文件处理 {
     @Test
     public void cs(){
         //沙尘模式删除历史数据();
-        rmaps同步();
-        DateTime myDate = new DateTime("2021-05-12 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
+        DateTime myDate = new DateTime("2021-06-14 20:00:00", DatePattern.NORM_DATETIME_FORMAT);
         沙尘模式同步(myDate);
     }
     public void ftp处理() {
@@ -87,7 +86,7 @@ public class 数值预报文件处理 {
     public void rmaps同步() {
         try {
             Ftp ftp = new Ftp("172.18.112.10", 21, "hhhtftp", "hhhtftp0606", CharsetUtil.CHARSET_UTF_8);
-            ftp.setBackToPwd(false);
+            ftp.setBackToPwd(true);
             ftp.setMode(FtpMode.Passive);
             SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
             String format1 = df.format(new Date());

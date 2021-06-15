@@ -4,6 +4,7 @@ import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.io.resource.ClassPathResource;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
@@ -26,8 +27,12 @@ import java.util.stream.Collectors;
 public class EC入库 {
     @Test
     public void cs() {
-        DateTime myDate = new DateTime("2021-05-31 08:00:00", DatePattern.NORM_DATETIME_FORMAT);
-        EC高空入库(myDate);
+        DateTime myDate = new DateTime("2021-04-12 08:00:00", DatePattern.NORM_DATETIME_FORMAT);
+        for(int i=0;i<9;i++){
+            DateTime mydate1=DateUtil.offsetDay(myDate,i);
+            EC地面入库(mydate1);
+        }
+
     }
 
     public static void 处理EC(Date sdate) {
@@ -215,7 +220,19 @@ public class EC入库 {
                             if(!dataLists.isEmpty()){
                                 降水量米转毫米(dataLists);
                                 ecDao.insert_ECSurface(dataLists, "Rain");
-                                FileUtil.del(FileUtil.getParent(myFileName,1));
+                                var direLS=FileUtil.getParent(myFileName,1);
+
+                                try{
+                                    for(int i=0;i<10;i++){
+                                        Thread.sleep( 600 );
+                                        System.gc();
+                                        if(FileUtil.del(direLS)){
+                                            break;
+                                        }
+                                    }
+                                } catch (IORuntimeException e) {
+                                    e.printStackTrace();
+                                }
                             }
                         }
                     }
