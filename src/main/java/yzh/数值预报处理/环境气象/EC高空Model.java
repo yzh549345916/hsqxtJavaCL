@@ -13,6 +13,15 @@ public class EC高空Model {
     private Double WIU;
     private Double WIV;
 
+    public Double getRHU() {
+        return RHU;
+    }
+
+    public void setRHU(Double RHU) {
+        this.RHU = RHU;
+    }
+
+    private Double RHU;
     public EC高空Model(String stationID, Date datetime, Integer validTime, Integer fcstLevel, Double GPH, Double TEM, Double SHU, Double WIU, Double WIV) {
         this.stationID = stationID;
         Datetime = datetime;

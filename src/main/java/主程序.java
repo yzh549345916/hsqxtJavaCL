@@ -18,20 +18,23 @@ import java.util.List;
 
 public class 主程序 {
     public static void main(String[] args) {
-
         数值预报文件处理 szyb = new 数值预报文件处理();
-        szyb.ftp处理();
-        Grib2处理.历史数据删除();
-        RMAPS数值预报站点数据定时处理();
-        RMAPS数值预报站点数据历史处理();
-        区台格点数值预报站点数据定时处理();
-        EC高空定时处理();
-        区台沙尘模式数据定时处理();
+       try{
 
-        沙尘模式下载.日常下载();
-        沙尘模式下载.压缩近7天的数据();
-        CUACE定时处理();
-        京津冀定时处理();
+           szyb.ftp处理();
+           Grib2处理.历史数据删除();
+           RMAPS数值预报站点数据定时处理();
+           RMAPS数值预报站点数据历史处理();
+           区台格点数值预报站点数据定时处理();
+           EC高空定时处理();
+           区台沙尘模式数据定时处理();
+           沙尘模式下载.日常下载();
+           沙尘模式下载.压缩近7天的数据();
+           CUACE定时处理();
+           京津冀定时处理();
+       } catch (Exception e) {
+           e.printStackTrace();
+       }
 
         /*
         考虑到Quartz表达式的兼容性，且存在对于秒级别精度匹配的需求，Hutool可以通过设置使用秒匹配模式来兼容。
@@ -199,7 +202,7 @@ public class 主程序 {
         System.out.println(DateUtil.date()+"处理"+myDate+"的EC数据");
     }
     @Test
-    public static void cs(){
+    public  void cs(){
        try{
            EC高空定时处理();
        } catch (Exception e) {

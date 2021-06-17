@@ -7,6 +7,46 @@ import java.util.Date;
 public class ECSurface implements Serializable {
     private String stationid;
 
+    public Double getTEM() {
+        return TEM;
+    }
+
+    public void setTEM(Double TEM) {
+        this.TEM = TEM;
+    }
+
+    public Double getPRS() {
+        return PRS;
+    }
+
+    public void setPRS(Double PRS) {
+        this.PRS = PRS;
+    }
+
+    public Double getWIU10() {
+        return WIU10;
+    }
+
+    public void setWIU10(Double WIU10) {
+        this.WIU10 = WIU10;
+    }
+
+    public Double getWIV10() {
+        return WIV10;
+    }
+
+    public void setWIV10(Double WIV10) {
+        this.WIV10 = WIV10;
+    }
+
+    public Double getDPT() {
+        return DPT;
+    }
+
+    public void setDPT(Double DPT) {
+        this.DPT = DPT;
+    }
+
     public String getStationid() {
         return stationid;
     }
@@ -85,6 +125,11 @@ public class ECSurface implements Serializable {
     private Double tmin;
 
     private Double rain;
+    private Double TEM;
+    private Double PRS;
+    private Double WIU10;
+    private Double WIV10;
+    private Double DPT;
 
     private static final long serialVersionUID = 1L;
 

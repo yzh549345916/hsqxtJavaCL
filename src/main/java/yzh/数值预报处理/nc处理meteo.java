@@ -106,7 +106,7 @@ public class nc处理meteo {
         地面沙尘浓度json转换(myDate, format2, aDataInfo, mypro, yDimension, xDimension, tDimension, paramType, paramChineseName, myFileNameBase, "ug/m3", stationData, stations, stationFileNameBase,ecDao);
 
        //暂时不用上传沙尘模式数据到20服务器，因此注释掉
-        //同步沙尘模式数据(format1);
+        同步沙尘模式数据(format1);
         /* variableStrs=new String[]{"PM2_5_DRY"};
         paramType="PM2.5";paramChineseName="PM2.5";
         myFileNameBase=myDirNameBase+paramType+"/";

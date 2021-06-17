@@ -156,8 +156,11 @@ public class 风向风速转换 {
     }
 
     public static double fxjs(double v, double u) {
-        double fx = 999.9; //风向
-        if ((u > 0) & (v > 0)) {
+        double fx = 999.9;
+        if(v>9999.0&&u>9999){
+            return 999999;
+        }
+        else if ((u > 0) & (v > 0)) {
             fx = 270 - atan(v / u) * 180 / Math.PI;
         } else if ((u < 0) & (v > 0)) {
             fx = 90 - atan(v / u) * 180 / Math.PI;
@@ -181,7 +184,7 @@ public class 风向风速转换 {
 
     public static double GetFS(double v, double u) {
         if (v < -99999 || u < -99999 || v > 99999 || u > 99999) {
-            return -999999;
+            return 999999;
         }
         //风速是uv分量的平方和
         return sqrt(pow(u, 2) + pow(v, 2));
